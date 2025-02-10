@@ -4,6 +4,8 @@
   "description": "",
   "main": "server_homeowner.js",
   "dependencies": {
+    "@auth/core": "^0.37.4",
+    "@auth/express": "^0.8.4",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
