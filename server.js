@@ -5,9 +5,9 @@ import adminRoutes from './services/adminRoutes.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ExpressAuth } from '@auth/express';
-import Credentials from '@auth/express/providers/credentials';
+import Credentials from '@auth/core/providers/credentials';
 import bcrypt from 'bcryptjs';
-
+import { getSession } from "@auth/express"
 dotenv.config();
 
 const port = process.env.PORT || 8080;
@@ -65,11 +65,11 @@ const startServer = async () => {
             if (!user || !bcrypt.compareSync(credentials.password, user.password)) {
               throw new Error('Invalid credentials');
             }
-            return { id: user.id, name: user.username };
+            return { id: user.id, name: user.username, hotdog:true };
           }
         })
       ],
-      csrf: true, // ❗ Only for debugging; do not use in production
+      csrf: false, // ❗ Only for debugging; do not use in production
       trustHost: true,
       secret: process.env.AUTH_SECRET || 'your_secret_key',
       session: { strategy: 'jwt' },
@@ -83,7 +83,9 @@ const startServer = async () => {
         },
         async session({ session, token }) {
           session.user.id = token.id;
-          return session;
+          session.hotdog = true
+
+          return {session, token};
         }
       }
     }));
