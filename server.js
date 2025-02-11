@@ -3,6 +3,7 @@ import db from './services/db/db.js'; // Ensure this path is correct
 import homeOwnerRoutes from './services/homeOwnerRoutes.js';
 import adminRoutes from './services/adminRoutes.js';
 import authRoutes from './services/authRoutes.js';
+import officerRoutes from './services/officerRoutes.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ExpressAuth } from '@auth/express';
@@ -47,9 +48,9 @@ const startServer = async () => {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
-    const users = [
-      { id: '1', username: 'dummyadmin2', password: bcrypt.hashSync('dummyadmin2', 10) }
-    ];
+    // const users = [
+    //   { id: '1', username: 'dummyadmin2', password: bcrypt.hashSync('dummyadmin2', 10) }
+    // ];
 
     // ✅ Use ExpressAuth middleware properly
     // app.use(ExpressAuth({
@@ -94,6 +95,7 @@ const startServer = async () => {
 
     app.use('/api/admin', adminRoutes);
     app.use('/api/home-owner', homeOwnerRoutes);
+    app.use('/api/officer', officerRoutes);
     app.use('/api/auth', authRoutes);
     app.listen(port, () => {
       console.log(`[SERVER] Ready on http://localhost:${port}`);
