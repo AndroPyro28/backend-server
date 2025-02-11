@@ -1,6 +1,5 @@
-// services/db/userRoutes.js
+// services/db/authRoutes.js
 const express = require('express');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { ObjectId } = require('mongodb');
 const router = express.Router();
@@ -14,9 +13,10 @@ router.post('/login', async (req, res) => {
       const database = db.getDb();
       const usersCollection = database.collection('users');
   
+      console.log({ username, password })
       // Find the user by username
       const user = await usersCollection.findOne({ usr_username: username });
-  
+    
       if (!user) {
         return res.status(401).json({ error: 'Invalid username or password' });
       }
@@ -41,3 +41,5 @@ router.post('/login', async (req, res) => {
       res.status(500).json({ error: 'Internal server error' });
     }
   });
+
+module.exports = router;

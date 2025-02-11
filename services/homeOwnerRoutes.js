@@ -77,9 +77,9 @@ router.post('/logout', (req, res) => {
 
 // =========================== USER PROFILE ROUTES ===========================
 
-router.get('/header/:userId', authenticateToken, async (req, res) => {
+router.get('/header/:userId', async (req, res) => {
     const { userId } = req.params;
-
+    console.log("user fetch", userId)
     try {
         console.log('Fetching user data for userId:', userId);
         const dbClient = db.getDb();
@@ -104,7 +104,7 @@ router.get('/header/:userId', authenticateToken, async (req, res) => {
 });
 
 // Update User Profile
-router.put('/profile/:userId', authenticateToken, async (req, res) => {
+router.put('/profile/:userId',  async (req, res) => {
     const { userId } = req.params;
     const { usr_first_name, usr_last_name, usr_username, usr_phone, usr_email, new_password } = req.body;
 
@@ -159,8 +159,8 @@ router.put('/profile/:userId', authenticateToken, async (req, res) => {
 
 // =========================== PROPERTY ROUTES ===========================
 
-router.get('/properties', authenticateToken, async (req, res) => {
-    const { userId } = req.user; // Extract userId from JWT payload
+router.get('/properties/:userId',  async (req, res) => {
+    const { userId } = req.params; // Extract userId from JWT payload
     console.log(`Received userId: '${userId}'`); // Log userId for debugging
 
     try {
@@ -194,7 +194,7 @@ const convertDecimalToNumber = (value) => {
     return value;
 };
 
-router.get('/properties/:propId', authenticateToken, async (req, res) => {
+router.get('/properties/:propId',  async (req, res) => {
     const { propId } = req.params;
 
     try {
@@ -237,7 +237,7 @@ router.get('/properties/:propId', authenticateToken, async (req, res) => {
 // =========================== BILLING STATEMENTS ROUTES ===========================
 
 // Fetch Billing Statements for a User
-router.get('/statements', authenticateToken, async (req, res) => {
+router.get('/statements',  async (req, res) => {
     const { userId } = req.user; // Extract userId from JWT payload
     console.log(`Received userId: '${userId}'`); // Log userId for debugging
 
@@ -279,7 +279,7 @@ router.get('/statements', authenticateToken, async (req, res) => {
 // =========================== DASHBOARD ROUTE ===========================
 
 // Fetch User Dashboard Data
-router.get('/dashboard/:userId', authenticateToken, async (req, res) => {
+router.get('/dashboard/:userId',  async (req, res) => {
     const { userId } = req.params;
 
     try {
@@ -329,7 +329,7 @@ router.get('/dashboard/:userId', authenticateToken, async (req, res) => {
 // =========================== TRANSACTION ROUTES ===========================
 
 // Fetch Transactions for a User
-// router.get('/transaction/:userId', authenticateToken, async (req, res) => {
+// router.get('/transaction/:userId',  async (req, res) => {
 //     const { userId } = req.params;
 
 //     try {
@@ -344,7 +344,7 @@ router.get('/dashboard/:userId', authenticateToken, async (req, res) => {
 // });
 
 // Route to get transaction history for a user
-router.get('/transaction/:userId', authenticateToken, async (req, res) => {
+router.get('/transaction/:userId', async (req, res) => {
     const { userId } = req.params;
 
     try {
@@ -377,7 +377,7 @@ router.get('/transaction/:userId', authenticateToken, async (req, res) => {
 // =========================== REPORT ROUTES ===========================
 
 // Create a Report
-router.post('/report', authenticateToken, async (req, res) => {
+router.post('/report',  async (req, res) => {
     const { rpt_title, rpt_desc, rpt_image_url, rpt_type } = req.body;
     const { userId } = req.user;
 
@@ -486,7 +486,7 @@ const generateId = (prefix, uppercase = false) => {
 
 
 // =========================== TRANSACTION ROUTES ===========================
-router.post('/transactions/:propId', authenticateToken, async (req, res) => {
+router.post('/transactions/:propId',  async (req, res) => {
     try {
         const { propId } = req.params;
         const {
@@ -543,7 +543,7 @@ router.post('/transactions/:propId', authenticateToken, async (req, res) => {
 
 
 // =========================== WALLET ROUTES ===========================
-router.post('/wallet', authenticateToken, async (req, res) => {
+router.post('/wallet',  async (req, res) => {
     try {
         console.log('Received wallet creation request:', req.body); // Log request data
         const { wall_owner, wall_adv_water_pay = 0.00, wall_adv_hoa_pay = 0.00, wall_adv_garb_pay = 0.00 } = req.body;

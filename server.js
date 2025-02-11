@@ -2,6 +2,7 @@ import express from 'express';
 import db from './services/db/db.js'; // Ensure this path is correct
 import homeOwnerRoutes from './services/homeOwnerRoutes.js';
 import adminRoutes from './services/adminRoutes.js';
+import authRoutes from './services/authRoutes.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ExpressAuth } from '@auth/express';
@@ -47,51 +48,53 @@ const startServer = async () => {
     app.use(express.urlencoded({ extended: true }));
 
     const users = [
-      { id: '1', username: 'testuser', password: bcrypt.hashSync('password123', 10) }
+      { id: '1', username: 'dummyadmin2', password: bcrypt.hashSync('dummyadmin2', 10) }
     ];
 
     // ✅ Use ExpressAuth middleware properly
-    app.use(ExpressAuth({
-      providers: [
-        Credentials({
-          name: 'credentials',
-          credentials: {
-            username: { label: "username", type: "text" },
-            password: { label: "password", type: "password" },
-          },
-          async authorize(credentials) {
-            console.log("body",credentials )
-            const user = users.find(u => u.username === credentials.username);
-            if (!user || !bcrypt.compareSync(credentials.password, user.password)) {
-              throw new Error('Invalid credentials');
-            }
-            return { id: user.id, name: user.username, hotdog:true };
-          }
-        })
-      ],
-      csrf: false, // ❗ Only for debugging; do not use in production
-      trustHost: true,
-      secret: process.env.AUTH_SECRET || 'your_secret_key',
-      session: { strategy: 'jwt' },
-      debug: true,
-      callbacks: {
-        async jwt({ token, user }) {
-          if (user) {
-            token.id = user.id;
-          }
-          return token;
-        },
-        async session({ session, token }) {
-          session.user.id = token.id;
-          session.hotdog = true
+    // app.use(ExpressAuth({
+    //   providers: [
+    //     Credentials({
+    //       name: 'credentials',
+    //       credentials: {
+    //         username: { label: "username", type: "text" },
+    //         password: { label: "password", type: "password" },
+    //       },
+    //       async authorize(credentials) {
+    //         console.log("body",credentials )
+    //         const user = users.find(u => u.username === credentials.username);
 
-          return {session, token};
-        }
-      }
-    }));
+    //         if (!user || !bcrypt.compareSync(credentials.password, user.password)) {
+    //           throw new Error('Invalid credentials');
+    //         }
+    //         return { id: user.id, name: user.username, hotdog:true };
+    //       }
+    //     })
+    //   ],
+    //   csrf: false, // ❗ Only for debugging; do not use in production
+    //   trustHost: true,
+    //   secret: process.env.AUTH_SECRET || 'your_secret_key',
+    //   session: { strategy: 'jwt' },
+    //   debug: true,
+    //   callbacks: {
+    //     async jwt({ token, user }) {
+    //       if (user) {
+    //         token.id = user.id;
+    //       }
+    //       return token;
+    //     },
+    //     async session({ session, token }) {
+    //       session.user.id = token.id;
+    //       session.hotdog = true
+
+    //       return {session, token};
+    //     }
+    //   }
+    // }));
 
     app.use('/api/admin', adminRoutes);
     app.use('/api/home-owner', homeOwnerRoutes);
+    app.use('/api/auth', authRoutes);
     app.listen(port, () => {
       console.log(`[SERVER] Ready on http://localhost:${port}`);
     });
