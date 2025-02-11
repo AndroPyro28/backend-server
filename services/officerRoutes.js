@@ -8,7 +8,7 @@ const { ObjectId, Decimal128 } = require('mongodb');
 const router = express.Router();
 require('dotenv').config(); // Load environment variables
 
-const db = require('../db/db.js'); // Import the db module
+const db = require('./db/db.js'); // Import the db module
 // Import sendWelcomeEmail from emailService
 
 tinify.key = process.env.TINIFY_API_KEY;
@@ -252,8 +252,6 @@ router.get('/users', async (req, res) => {
   router.post('/users/:usr_id/edit-profile', async (req, res) => {
     
   })
-  
-  
   
   // GET /api/users/:usr_id/properties - Fetch properties specific to a user by usr_id
   router.get('/users/:usr_id/properties', async (req, res) => {
