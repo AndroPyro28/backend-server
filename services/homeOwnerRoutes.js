@@ -194,9 +194,8 @@ const convertDecimalToNumber = (value) => {
     return value;
 };
 
-router.get('/properties/:propId',  async (req, res) => {
+router.get('/properties-by-propId/:propId',  async (req, res) => {
     const { propId } = req.params;
-
     try {
         const dbClient = db.getDb();
 
