@@ -3,8 +3,10 @@ import db from './services/db/db.js'; // Ensure this path is correct
 import homeOwner from './services/controllers/homeOwner.js';
 import admin from './services/controllers/admin.js';
 import auth from './services/controllers/auth.js';
+import user from './services/controllers/user.js';
 import officer from './services/controllers/officer.js';
 import transaction from './services/controllers/transaction.js';
+import property from './services/controllers/property.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ExpressAuth } from '@auth/express';
@@ -98,7 +100,9 @@ const startServer = async () => {
     app.use('/api/home-owner', homeOwner);
     app.use('/api/officer', officer);
     app.use('/api/auth', auth);
+    app.use('/api/user', user);
     app.use('/api/transaction', transaction);
+    app.use('/api/property', property);
     app.listen(port, () => {
       console.log(`[SERVER] Ready on http://localhost:${port}`);
     });

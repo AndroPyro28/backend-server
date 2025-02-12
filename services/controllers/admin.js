@@ -515,6 +515,7 @@ router.get('/properties', async (req, res) => {
   try {
     const database = db.getDb(); // Get the database instance
     const propertiesCollection = database.collection('properties'); // Access the 'properties' collection
+
     // Use MongoDB aggregation to join the 'users' collection and get owner's details
     const properties = await propertiesCollection.aggregate([
       {
@@ -538,8 +539,12 @@ router.get('/properties', async (req, res) => {
           prop_owner: {
             $concat: ['$ownerDetails.usr_first_name', ' ', '$ownerDetails.usr_last_name'] // Combine first and last names
           },
-          prop_owner_lastname: 1
+          prop_owner_lastname: 1,
+          prop_created_at: 1 // Ensure createdAt is included for sorting
         }
+      },
+      {
+        $sort: { prop_created_at: -1 } // Sort from latest to oldest
       }
     ]).toArray();
 
@@ -549,6 +554,7 @@ router.get('/properties', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch properties' }); // Handle errors
   }
 });
+
 
 
 
