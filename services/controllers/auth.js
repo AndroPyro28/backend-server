@@ -3,7 +3,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const { ObjectId } = require('mongodb');
 const router = express.Router();
-const db = require('./db/db');
+const db = require('../db/db');
 require('dotenv').config();
 
 router.post('/login', async (req, res) => {

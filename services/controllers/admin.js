@@ -8,9 +8,9 @@ const { ObjectId, Decimal128 } = require('mongodb');
 const router = express.Router();
 require('dotenv').config(); // Load environment variables
 
-const db = require('./db/db.js'); // Import the db module
+const db = require('../db/db.js'); // Import the db module
 // Import sendWelcomeEmail from emailService
-const { sendWelcomeEmail } = require('./welcomeEmail.js');
+const { sendWelcomeEmail } = require('../welcomeEmail.js');
 
 tinify.key = process.env.TINIFY_API_KEY;
 
@@ -912,6 +912,7 @@ router.get('/transactions', async (req, res) => {
           trn_purp: 1,
           trn_purp_id: '$statementDetails.bll_id',
           trn_status: 1,
+          trn_reason: 1,
           statusUpdaterDetails: 1, // Include raw status updater details for debugging
           trn_method: 1,
           trn_amount: 1,
@@ -1305,6 +1306,49 @@ router.post('/settings/delete-rate', async (req, res) => {
   } catch (err) {
     console.error('Error deleting rate:', err);
     res.status(500).json({ error: 'Failed to delete rate' });
+  }
+});
+
+
+//-----------------------------------------------Dashboard endpoint------------------------------------------
+
+
+router.get("/dashboard", async (req, res) => {
+  try {
+    const database = db.getDb();
+    if (!database) {
+      throw new Error("Database connection failed.");
+    }
+
+    const transactionsCollection = database.collection("transactions");
+
+    // Get the first and last day of the current month
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    // Fetch transactions only for the current month using 'trn_created_at'
+    const transactions = await transactionsCollection
+      .find({ trn_created_at: { $gte: firstDay, $lte: lastDay } })
+      .toArray();
+
+    // Calculate totals
+    const totalCollection = transactions.reduce(
+      (acc, transaction) => {
+        if (transaction.trn_status === "pending") {
+          acc.pending += transaction.trn_amount || 0;
+        } else if (transaction.trn_status === "completed") {
+          acc.completed += transaction.trn_amount || 0;
+        }
+        return acc;
+      },
+      { completed: 0, pending: 0 }
+    );
+
+    res.status(200).json(totalCollection);
+  } catch (err) {
+    console.error("Error fetching transactions:", err);
+    res.status(500).json({ error: "Failed to fetch transactions" });
   }
 });
 

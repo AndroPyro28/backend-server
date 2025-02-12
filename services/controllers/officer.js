@@ -8,7 +8,7 @@ const { ObjectId, Decimal128 } = require('mongodb');
 const router = express.Router();
 require('dotenv').config(); // Load environment variables
 
-const db = require('./db/db.js'); // Import the db module
+const db = require('../db/db.js'); // Import the db module
 // Import sendWelcomeEmail from emailService
 
 tinify.key = process.env.TINIFY_API_KEY;

@@ -1,9 +1,10 @@
 import express from 'express';
 import db from './services/db/db.js'; // Ensure this path is correct
-import homeOwnerRoutes from './services/homeOwnerRoutes.js';
-import adminRoutes from './services/adminRoutes.js';
-import authRoutes from './services/authRoutes.js';
-import officerRoutes from './services/officerRoutes.js';
+import homeOwner from './services/controllers/homeOwner.js';
+import admin from './services/controllers/admin.js';
+import auth from './services/controllers/auth.js';
+import officer from './services/controllers/officer.js';
+import transaction from './services/controllers/transaction.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ExpressAuth } from '@auth/express';
@@ -93,10 +94,11 @@ const startServer = async () => {
     //   }
     // }));
 
-    app.use('/api/admin', adminRoutes);
-    app.use('/api/home-owner', homeOwnerRoutes);
-    app.use('/api/officer', officerRoutes);
-    app.use('/api/auth', authRoutes);
+    app.use('/api/admin', admin);
+    app.use('/api/home-owner', homeOwner);
+    app.use('/api/officer', officer);
+    app.use('/api/auth', auth);
+    app.use('/api/transaction', transaction);
     app.listen(port, () => {
       console.log(`[SERVER] Ready on http://localhost:${port}`);
     });

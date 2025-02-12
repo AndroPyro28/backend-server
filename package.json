@@ -17,6 +17,7 @@
     "mailersend": "^2.3.0",
     "mongodb": "^6.9.0",
     "mongoose": "^8.8.1",
+    "nodemailer": "^6.10.0",
     "nodemon": "^3.1.7",
     "path": "^0.12.7",
     "tinify": "^1.7.1"
