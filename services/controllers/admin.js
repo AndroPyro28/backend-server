@@ -662,7 +662,7 @@ router.get('/properties/:prop_id', async (req, res) => {
 
     const data = JSON.parse(JSON.stringify(property[0]))
     // Convert all Decimal128 fields to strings, including nested ones
-    const propertyResponse = convertDecimal128FieldsToString(property[0]);
+    const propertyResponse = convertDecimal128FieldsToString(data);
     res.status(200).json(propertyResponse);
 
   } catch (err) {
