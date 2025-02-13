@@ -237,7 +237,7 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
 
 // Fetch Billing Statements for a User
 router.get('/statements',  async (req, res) => {
-    const { userId } = req.user; // Extract userId from JWT payload
+    const { userId } = req.query; // Extract userId from JWT payload
     console.log(`Received userId: '${userId}'`); // Log userId for debugging
 
     try {
@@ -378,7 +378,7 @@ router.get('/transaction/:userId', async (req, res) => {
 // Create a Report
 router.post('/report',  async (req, res) => {
     const { rpt_title, rpt_desc, rpt_image_url, rpt_type } = req.body;
-    const { userId } = req.user;
+    const { userId } = req.query;
 
     if (!rpt_title || !rpt_desc) {
         return res.status(400).json({ error: 'Title and description are required.' });
