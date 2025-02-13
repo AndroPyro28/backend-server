@@ -2,7 +2,7 @@
   "name": "cvdevnext_how",
   "version": "1.0.0",
   "description": "",
-  "main": "server_homeowner.js",
+  "main": "server.js",
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@auth/express": "^0.8.4",

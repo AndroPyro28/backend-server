@@ -38,6 +38,7 @@ const closeConnection = async () => {
     }
 };
 
+
 module.exports = {
     connectToServer,
     getDb,
