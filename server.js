@@ -1,5 +1,5 @@
 import express from 'express';
-import db from './services/db/db.js'; // Ensure this path is correct
+import {connectToServer} from './services/db/db.js'; // Ensure this path is correct
 import homeOwner from './services/controllers/homeOwner.js';
 import admin from './services/controllers/admin.js';
 import auth from './services/controllers/auth.js';
@@ -19,7 +19,7 @@ const port = process.env.PORT || 8080;
 
 const startServer = async () => {
   try {
-    await db.connectToServer(); // ✅ Connect to MongoDB inside an async function
+    await connectToServer(); // ✅ Connect to MongoDB inside an async function
     console.log('[SERVER] Database connection successful');
 
     const app = express();

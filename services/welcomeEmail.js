@@ -1,6 +1,7 @@
 // emailService.js
-require('dotenv').config(); // Load environment variables
-const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
+import 'dotenv/config'; // Load environment variables
+// Load environment variables
+import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend';
 
 // Initialize MailerSend with API key from environment variable
 const mailerSend = new MailerSend({
@@ -200,4 +201,4 @@ async function sendWelcomeEmail(email, otp, firstName, lastName, username, passw
   }
 }
 
-module.exports = { sendWelcomeEmail };
+export { sendWelcomeEmail };

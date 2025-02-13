@@ -1,15 +1,17 @@
-const express = require('express');
-const bcrypt = require('bcrypt');
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import tinify from 'tinify';
+import { ObjectId, Decimal128 } from 'mongodb';
+import {getDb} from '../db/db.js';
+import 'dotenv/config'; // Lo
 const router = express.Router();
-const db = require('../db/db');
-require('dotenv').config();
-
 router.put('/update-status/:id', async (req, res) => {
         const {id} = req.params
         const {status, reason} = req.body;
         console.log({status, reason})
     try {
-        const database = db.getDb();
+        const database = getDb();
         if (!database) {
           throw new Error("Database connection failed.");
         }
@@ -35,4 +37,4 @@ router.put('/update-status/:id', async (req, res) => {
       }
 })
 
-module.exports = router
+export default router;

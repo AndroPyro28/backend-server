@@ -1,16 +1,18 @@
-// services/db/authRoutes.js
-const express = require('express');
-const bcrypt = require('bcrypt');
-const { ObjectId } = require('mongodb');
-const router = express.Router();
-const db = require('../db/db');
-require('dotenv').config();
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import tinify from 'tinify';
+import { ObjectId, Decimal128 } from 'mongodb';
+import {getDb} from '../db/db.js';
+import 'dotenv/config'; // Load environment variables
 
+
+const router = express.Router();
 router.get('/', async (req, res) => {
     const { role } = req.query;
     
     try {
-      const database = db.getDb();
+      const database = getDb();
       const usersCollection = database.collection('users');
       const query = role ? { usr_role: role } : {};
       // Find the user by username
@@ -31,4 +33,4 @@ router.get('/', async (req, res) => {
     }
   });
 
-module.exports = router;
+  export default router;

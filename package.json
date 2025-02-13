@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
+  "type": "module",
   "dependencies": {
     "@auth/core": "^0.37.4",
     "@auth/express": "^0.8.4",

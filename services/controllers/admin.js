@@ -1,16 +1,15 @@
 // services/db/userRoutes.js
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import tinify from 'tinify';
+import { ObjectId, Decimal128 } from 'mongodb';
+import 'dotenv/config'; // Load environment variables
 
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const fs = require('fs');
-const tinify = require('tinify');
-const { ObjectId, Decimal128 } = require('mongodb');
+import {getDb} from '../db/db.js'; // Import the db module
+import { sendWelcomeEmail } from '../welcomeEmail.js'; // Import sendWelcomeEmail from emailService
+
 const router = express.Router();
-require('dotenv').config(); // Load environment variables
-
-const db = require('../db/db.js'); // Import the db module
-// Import sendWelcomeEmail from emailService
-const { sendWelcomeEmail } = require('../welcomeEmail.js');
 
 tinify.key = process.env.TINIFY_API_KEY;
 
@@ -90,7 +89,7 @@ router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     const usersCollection = database.collection('users');
 
     console.log('hello')
@@ -134,7 +133,7 @@ router.post('/login', async (req, res) => {
 // GET /api/users - Fetch all users
 router.get('/users', async (req, res) => {
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const usersCollection = database.collection('users'); // Access the 'users' collection
     const users = await usersCollection.find({}).toArray(); // Fetch all users from the collection
     res.json(users); // Send the user data as JSON
@@ -151,7 +150,7 @@ router.get('/users/:usr_id', async (req, res) => {
   const { usr_id } = req.params;  // Extract the usr_id from the URL
 
   try {
-    const database = db.getDb();  // Get the database instance
+    const database = getDb();  // Get the database instance
     const usersCollection = database.collection('users');  // Access the 'users' collection
 
     // Use MongoDB aggregation to join the 'wallet' collection and retrieve the wallet balance
@@ -210,7 +209,7 @@ router.post('/create_account', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 16); // Hash the password
 
     // Check if the database connection is working
-    const database = db.getDb();
+    const database = getDb();
     if (!database) {
       throw new Error("Database connection failed.");
     }
@@ -307,7 +306,7 @@ router.get('/users/:usr_id/properties', async (req, res) => {
   const { usr_id } = req.params;
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     const propertiesCollection = database.collection('properties');
 
     const properties = await propertiesCollection.aggregate([
@@ -382,7 +381,7 @@ router.get('/users/:usr_id/transactions', async (req, res) => {
   const { usr_id } = req.params;
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     const transactionsCollection = database.collection('transactions');
 
     const transactions = await transactionsCollection.aggregate([
@@ -432,7 +431,7 @@ router.post('/create_property', async (req, res) => {
   const timestamp = new Date();  // Get the current date and time
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     if (!database) {
       throw new Error("Database connection failed.");
     }
@@ -513,7 +512,7 @@ router.post('/create_property', async (req, res) => {
 // GET /api/properties - Fetch all properties
 router.get('/properties', async (req, res) => {
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const propertiesCollection = database.collection('properties'); // Access the 'properties' collection
 
     // Use MongoDB aggregation to join the 'users' collection and get owner's details
@@ -560,7 +559,7 @@ router.get('/properties', async (req, res) => {
 
 router.get('/properties/get_collectible_id', async (req, res) => {
   try {
-    const database = db.getDb();
+    const database = getDb();
     if (!database) {
       console.error('Database connection is not initialized');
       return res.status(500).json({ error: 'Database not connected' });
@@ -593,7 +592,7 @@ router.get('/properties/:prop_id', async (req, res) => {
   const { prop_id } = req.params;
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     const propertiesCollection = database.collection('properties');
 
     const property = await propertiesCollection.aggregate([
@@ -672,7 +671,7 @@ router.post('/properties/:prop_id/new_billing_statement', async (req, res) => {
   const timestamp = new Date(); // Get the current date and time
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     const propertiesCollection = database.collection('properties');
     const billingStatementsCollection = database.collection('statements');
 
@@ -759,7 +758,7 @@ router.get('/properties/:prop_id/statements', async (req, res) => {
   const { prop_id } = req.params;
 
     try {
-        const database = db.getDb(); // Get the database instance
+        const database = getDb(); // Get the database instance
         const billingStatementsCollection = database.collection('statements'); // Access the 'statements' collection
 
         // Query all statements for the given property ID
@@ -783,7 +782,7 @@ router.get('/properties/:prop_id/statement_total', async (req, res) => {
   const { prop_id } = req.params;
 
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const billingStatementsCollection = database.collection('statements'); // Access the 'statements' collection
 
     // Aggregate to sum up all bll_total_amt_due for partial or pending statements of the given property
@@ -824,7 +823,7 @@ router.get('/properties/:prop_id/latest_statement_water_consump', async (req, re
   const { prop_id } = req.params;
 
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const billingStatementsCollection = database.collection('statements'); // Access the 'statements' collection
 
     // Query the latest statement for the given property ID based on bll_bill_cov_period_date
@@ -870,7 +869,7 @@ router.post('/properties/:prop_id/edit-property', async (req, res) => {
 // GET /api/transactions - Fetch transactions with detailed information
 router.get('/transactions', async (req, res) => {
   try {
-    const database = db.getDb();
+    const database = getDb();
     const transactionsCollection = database.collection('transactions'); // Access the 'transactions' collection
 
     // Use aggregation to join with users and statements collections
@@ -968,7 +967,7 @@ router.post('/transactions/:trn_id/reject', async (req, res) => {
 
 router.get('/wallet', async (req, res) => {
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const walletCollection = database.collection('villwallet'); // Access the 'wallet' collection
     const wallet = await walletCollection.find({}).toArray(); // Fetch all wallet from the collection
 
@@ -999,7 +998,7 @@ router.post('/wallet/spend', async (req, res) => {
       return res.status(400).json({ error: 'Amount must be a numeric value' });
     }
 
-    const database = db.getDb();
+    const database = getDb();
     const walletCollection = database.collection('villwallet');
 
     // Find the wallet
@@ -1064,7 +1063,7 @@ router.post('/wallet/deposit', async (req, res) => {
       return res.status(400).json({ error: 'Amount must be a numeric value' });
     }
 
-    const database = db.getDb();
+    const database = getDb();
     const walletCollection = database.collection('villwallet');
 
     // Find the wallet
@@ -1121,7 +1120,7 @@ router.post('/wallet/deposit', async (req, res) => {
 // GET /settings/misc - get all data from the misc collection
 router.get('/settings/misc', async (req, res) => {
   try {
-    const database = db.getDb();
+    const database = getDb();
     const settingsCollection = database.collection('misc');
     const data = await settingsCollection.find({}).toArray();
 
@@ -1137,7 +1136,7 @@ router.get('/settings/misc', async (req, res) => {
 // GET /api/settings/misc/hoa_rate - Fetch the HOA rate from the misc collection
 router.get('/settings/misc/hoa_rate', async (req, res) => {
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const settingsCollection = database.collection('misc'); // Access the 'misc' collection
 
     // Find the document with misc_type equal to 'hoa_rate'
@@ -1159,7 +1158,7 @@ router.get('/settings/misc/hoa_rate', async (req, res) => {
 // GET /api/settings/misc/water_rate - Fetch all water rate documents from the misc collection
 router.get('/settings/misc/water_rate', async (req, res) => {
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const settingsCollection = database.collection('misc'); // Access the 'misc' collection
 
     // Find all documents with misc_type equal to 'water_rate'
@@ -1181,7 +1180,7 @@ router.get('/settings/misc/water_rate', async (req, res) => {
 // GET /api/settings/misc/garb_rate - Fetch all garbage rate documents from the misc collection
 router.get('/settings/misc/garb_rate', async (req, res) => {
   try {
-    const database = db.getDb(); // Get the database instance
+    const database = getDb(); // Get the database instance
     const settingsCollection = database.collection('misc'); // Access the 'misc' collection
 
     // Find the document with misc_type equal to 'hoa_rate'
@@ -1204,7 +1203,7 @@ router.post('/settings/new-rate', async (req, res) => {
   const { miscAnnRate, miscAnnUnit, miscUnit, calculatedMiscUnitAmt, miscRangeMin, miscRangeMax, miscDesc, miscType} = req.body;
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     if (!database) {
       throw new Error("Database connection failed.");
     }
@@ -1240,7 +1239,7 @@ router.post('/settings/new-water-rate', async (req, res) => {
   let computedMiscAnnRate = 0;
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     if (!database) {
       throw new Error("Database connection failed.");
     }
@@ -1294,7 +1293,7 @@ router.post('/settings/delete-rate', async (req, res) => {
   const { id } = req.body;
 
   try {
-    const database = db.getDb();
+    const database = getDb();
     if (!database) {
       throw new Error("Database connection failed.");
     }
@@ -1321,7 +1320,7 @@ router.post('/settings/delete-rate', async (req, res) => {
 
 router.get("/dashboard", async (req, res) => {
   try {
-    const database = db.getDb();
+    const database = getDb();
     if (!database) {
       throw new Error("Database connection failed.");
     }
@@ -1359,4 +1358,4 @@ router.get("/dashboard", async (req, res) => {
 });
 
 
-module.exports = router;
+export default router;

@@ -1,12 +1,11 @@
-// services/db/userRoutes.js
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const { ObjectId } = require('mongodb');
-const router = express.Router();
-const db = require('../db/db');
-require('dotenv').config();
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import { ObjectId } from 'mongodb';
+import {getDb} from '../db/db.js';
+import 'dotenv/config';
 
+const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 's4fG-21pLm!x@t$Q&eF1K9dP7^rtyh9!YvBn#MjKlZ3UwCx';
 
 if (!JWT_SECRET) {
@@ -42,7 +41,7 @@ router.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const user = await dbClient.collection('users').findOne({ usr_username: username });
 
         if (!user) {
@@ -82,7 +81,7 @@ router.get('/header/:userId', async (req, res) => {
     console.log("user fetch", userId)
     try {
         console.log('Fetching user data for userId:', userId);
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const user = await dbClient.collection('users').findOne({ usr_id: userId });
 
         if (!user) {
@@ -111,7 +110,7 @@ router.put('/profile/:userId',  async (req, res) => {
     console.log('Received update request for user:', userId);
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
 
         // Check if the user exists before updating
         const existingUser = await dbClient.collection('users').findOne({ usr_id: userId });
@@ -164,7 +163,7 @@ router.get('/properties/:userId',  async (req, res) => {
     console.log(`Received userId: '${userId}'`); // Log userId for debugging
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
 
         // Query using `prop_owner_id` as a string
         const query = { prop_owner_id: userId.trim() };
@@ -197,7 +196,7 @@ const convertDecimalToNumber = (value) => {
 router.get('/properties-by-propId/:propId',  async (req, res) => {
     const { propId } = req.params;
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
 
         if (!ObjectId.isValid(propId)) {
             return res.status(400).json({ error: 'Invalid property ID format.' });
@@ -241,7 +240,7 @@ router.get('/statements',  async (req, res) => {
     console.log(`Received userId: '${userId}'`); // Log userId for debugging
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
 
         // Query the `properties` collection to find the `prop_owner` ObjectId
         const property = await dbClient.collection('properties').findOne({ prop_owner_id: userId.trim() });
@@ -282,7 +281,7 @@ router.get('/dashboard/:userId',  async (req, res) => {
     const { userId } = req.params;
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const user = await dbClient.collection('users').findOne({ usr_id: userId });
 
         if (!user) {
@@ -332,7 +331,7 @@ router.get('/dashboard/:userId',  async (req, res) => {
 //     const { userId } = req.params;
 
 //     try {
-//         const dbClient = db.getDb();
+//         const dbClient = getDb();
 //         const transactions = await dbClient.collection('transactions').find({ trn_user_init: userId }).toArray();
 
 //         res.json(transactions);
@@ -347,7 +346,7 @@ router.get('/transaction/:userId', async (req, res) => {
     const { userId } = req.params;
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const transactions = await dbClient
             .collection('transactions')
             .find({ trn_user_init: userId })
@@ -385,7 +384,7 @@ router.post('/report',  async (req, res) => {
     }
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const report = {
             rpt_user: userId,
             rpt_title,
@@ -404,9 +403,6 @@ router.post('/report',  async (req, res) => {
     }
 });
 
-module.exports = router;
-
-
 
 // Utility function to generate JWT token
 function generateAuthToken(user) {
@@ -415,15 +411,12 @@ function generateAuthToken(user) {
     return token;
 }
 
-module.exports = router;
-
-
 // Fetch user profile by ID
 router.get('/profile/:userId', async (req, res) => {
     const { userId } = req.params;
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const userData = await dbClient.collection('users').findOne({ usr_id: userId });
 
         if (!userData) {
@@ -450,7 +443,7 @@ router.put('/profile/:userId', async (req, res) => {
     const { usr_first_name, usr_last_name, usr_phone, usr_email } = req.body;
 
     try {
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const result = await dbClient.collection('users').updateOne(
             { usr_id: userId },
             {
@@ -502,7 +495,7 @@ router.post('/transactions/:propId',  async (req, res) => {
             return res.status(400).json({ message: 'Missing required fields.' });
         }
 
-        const dbClient = db.getDb();
+        const dbClient = getDb();
 
         if (!ObjectId.isValid(propId)) {
             return res.status(400).json({ message: 'Invalid property ID.' });
@@ -551,7 +544,7 @@ router.post('/wallet',  async (req, res) => {
             return res.status(400).json({ message: 'Missing wallet owner (user ID).' });
         }
 
-        const dbClient = db.getDb();
+        const dbClient = getDb();
         const existingWallet = await dbClient.collection('wallet').findOne({ wall_owner });
 
         if (existingWallet) {
@@ -581,4 +574,4 @@ router.post('/wallet',  async (req, res) => {
 });
 
 
-module.exports = router;
+export default router;

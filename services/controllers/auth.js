@@ -1,16 +1,16 @@
 // services/db/authRoutes.js
-const express = require('express');
-const bcrypt = require('bcrypt');
-const { ObjectId } = require('mongodb');
-const router = express.Router();
-const db = require('../db/db');
-require('dotenv').config();
+import express from 'express';
+import bcrypt from 'bcrypt';
+import { ObjectId } from 'mongodb';
+import {getDb} from '../db/db.js';
+import 'dotenv/config';
 
+const router = express.Router();
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
   
     try {
-      const database = db.getDb();
+      const database = getDb();
       const usersCollection = database.collection('users');
   
       console.log({ username, password })
@@ -42,4 +42,4 @@ router.post('/login', async (req, res) => {
     }
   });
 
-module.exports = router;
+  export default router;

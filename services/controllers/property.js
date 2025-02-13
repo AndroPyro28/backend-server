@@ -1,17 +1,19 @@
 // services/db/authRoutes.js
-const express = require("express");
-const bcrypt = require("bcrypt");
-const { ObjectId } = require("mongodb");
-const router = express.Router();
-const db = require("../db/db");
-require("dotenv").config();
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import tinify from 'tinify';
+import { ObjectId, Decimal128 } from 'mongodb';
+import {getDb} from '../db/db.js';
+import 'dotenv/config'; // Load environment variables
 
+const router = express.Router();
 router.put("/:propId", async (req, res) => {
   const { propId } = req.params;
   const { lot, image, street, homeOwnerId } = req.body;
   console.log(lot, image, street, homeOwnerId)
   try {
-    const database = db.getDb();
+    const database = getDb();
     const propertiesCollection = database.collection("properties");
     const usersCollection = database.collection("users");
     // Find the user by username
@@ -49,4 +51,4 @@ router.put("/:propId", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

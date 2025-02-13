@@ -1,8 +1,9 @@
 //services/db.js
 
 
-const { MongoClient } = require('mongodb');
-require('dotenv').config();  // Load environment variables from .env
+import { MongoClient } from 'mongodb';
+import 'dotenv/config'; // Load environment variables
+  // Load environment variables from .env
 
 const uri = process.env.MG_URI;  // MongoDB connection string from the .env file
 let client;
@@ -38,9 +39,4 @@ const closeConnection = async () => {
     }
 };
 
-
-module.exports = {
-    connectToServer,
-    getDb,
-    closeConnection,
-};
+export { connectToServer, getDb, closeConnection };
