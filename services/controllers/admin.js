@@ -1,5 +1,5 @@
 // services/db/userRoutes.js
-import express from 'express';
+import express, { json } from 'express';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import tinify from 'tinify';
@@ -22,19 +22,28 @@ function convertDecimal128FieldsToString(data) {
   if (Array.isArray(data)) {
     return data.map(convertDecimal128FieldsToString);
   }
-  
-  if (typeof data === 'object' && data !== null) {
+
+  if (typeof data === "object" && data !== null) {
+    const newData = {};
+
     for (const key in data) {
-      if (data[key] && data[key]._bsontype === 'Decimal128') {
-        data[key] = data[key].toString(); // Convert to string
-      } else if (typeof data[key] === 'object') {
-        data[key] = convertDecimal128FieldsToString(data[key]); // Recursively handle nested objects
+      if (typeof data[key] === "object" && data[key] !== null) {
+        if ("$numberDecimal" in data[key]) {
+          newData[key] = data[key]["$numberDecimal"]; // Extract the actual number
+        } else {
+          newData[key] = convertDecimal128FieldsToString(data[key]); // Recursively process objects
+        }
+      } else {
+        newData[key] = data[key];
       }
     }
+
+    return newData;
   }
 
   return data;
 }
+
 
 // Helper function to generate a 6-digit OTP
 function generateOtp() {
@@ -143,8 +152,6 @@ router.get('/users', async (req, res) => {
   }
 });
 
-
-
 // GET /api/users/:usr_id - Fetch a specific user by ID
 router.get('/users/:usr_id', async (req, res) => {
   const { usr_id } = req.params;  // Extract the usr_id from the URL
@@ -186,9 +193,9 @@ router.get('/users/:usr_id', async (req, res) => {
     if (!user || user.length === 0) {
       return res.status(404).json({ error: 'User not found' });  // Handle case where user is not found
     }
-    
+    const data = JSON.parse(JSON.stringify(user[0]))
     // Convert all Decimal128 fields to strings, including nested ones
-    const userResponse = convertDecimal128FieldsToString(user[0]);
+    const userResponse = convertDecimal128FieldsToString(data);
     res.status(200).json(userResponse);
   } catch (err) {
     console.error('Error fetching user:', err);
@@ -365,8 +372,9 @@ router.get('/users/:usr_id/properties', async (req, res) => {
       return res.status(404).json({ error: 'No properties found for this user' });
     }
 
+    const data = JSON.parse(JSON.stringify(properties))
     // Convert all Decimal128 fields to strings, including nested ones
-    const propertiesResponse = properties.map(convertDecimal128FieldsToString);
+    const propertiesResponse = data.map(convertDecimal128FieldsToString);
     res.status(200).json(propertiesResponse);
 
   } catch (err) {
@@ -652,6 +660,7 @@ router.get('/properties/:prop_id', async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    const data = JSON.parse(JSON.stringify(property[0]))
     // Convert all Decimal128 fields to strings, including nested ones
     const propertyResponse = convertDecimal128FieldsToString(property[0]);
     res.status(200).json(propertyResponse);
@@ -838,8 +847,9 @@ router.get('/properties/:prop_id/latest_statement_water_consump', async (req, re
       return res.status(200).json({ bll_water_consump: 0 }); // Return "0" if no statement is found
     }
 
+    const data = JSON.parse(JSON.stringify(latestStatement[0]))
     // Extract the statement and apply the helper function
-    const convertedStatement = convertDecimal128FieldsToString(latestStatement[0]);
+    const convertedStatement = convertDecimal128FieldsToString(data);
 
     res.status(200).json({ bll_water_consump: convertedStatement.bll_water_consump });
   } catch (err) {
@@ -931,9 +941,9 @@ router.get('/transactions', async (req, res) => {
     if (!transactions || transactions.length === 0) {
       return res.status(404).json({ error: 'No transactions found' });
     }
-
+    const data = JSON.parse(JSON.stringify(transactions))
     // Convert all Decimal128 fields to strings, including nested ones
-    const transactionsResponse = transactions.map(convertDecimal128FieldsToString);
+    const transactionsResponse = data.map(convertDecimal128FieldsToString);
     res.status(200).json(transactionsResponse);
   } catch (err) {
     console.error('[SERVER] Error fetching transactions:', err);
@@ -971,8 +981,10 @@ router.get('/wallet', async (req, res) => {
     const walletCollection = database.collection('villwallet'); // Access the 'wallet' collection
     const wallet = await walletCollection.find({}).toArray(); // Fetch all wallet from the collection
 
+    const data = JSON.parse(JSON.stringify(wallet[0]))
     // Convert all Decimal128 fields to strings, including nested ones
-    const walletResponse = convertDecimal128FieldsToString(wallet[0]);
+    const walletResponse = convertDecimal128FieldsToString(data);
+    console.log(walletResponse)
     res.status(200).json(walletResponse);
   } catch (err) {
     console.error('[SERVER] Error fetching data:', err);
@@ -1125,7 +1137,7 @@ router.get('/settings/misc', async (req, res) => {
     const data = await settingsCollection.find({}).toArray();
 
     // Convert Decimal128 fields to strings
-    const convertedData = convertDecimal128FieldsToString(data);
+    const convertedData = convertDecimal128FieldsToString(JSON.parse(JSON.stringify(data)));
     res.status(200).json(convertedData);
   } catch (err) {
     console.error('[SERVER] Error fetching misc:', err);
@@ -1146,8 +1158,9 @@ router.get('/settings/misc/hoa_rate', async (req, res) => {
       return res.status(404).json({ error: 'HOA rate not found' });
     }
 
+    const data = JSON.parse(JSON.stringify(hoaRate))
     // Convert any Decimal128 fields to strings if needed
-    const hoaRateResponse = convertDecimal128FieldsToString(hoaRate);
+    const hoaRateResponse = convertDecimal128FieldsToString(data);
     res.status(200).json(hoaRateResponse);
   } catch (err) {
     console.error('Error fetching HOA rate:', err);
@@ -1168,8 +1181,9 @@ router.get('/settings/misc/water_rate', async (req, res) => {
       return res.status(404).json({ error: 'No water rates found' });
     }
 
+    const data = JSON.parse(JSON.stringify(waterRates))
     // Convert any Decimal128 fields to strings if needed
-    const waterRatesResponse = waterRates.map(convertDecimal128FieldsToString);
+    const waterRatesResponse = data.map(convertDecimal128FieldsToString);
     res.status(200).json(waterRatesResponse);
   } catch (err) {
     console.error('Error fetching water rates:', err);
@@ -1190,8 +1204,9 @@ router.get('/settings/misc/garb_rate', async (req, res) => {
       return res.status(404).json({ error: 'Garbage rate not found' });
     }
 
+    const data = JSON.parse(JSON.stringify(hoaRate))
     // Convert any Decimal128 fields to strings if needed
-    const hoaRateResponse = convertDecimal128FieldsToString(hoaRate);
+    const hoaRateResponse = convertDecimal128FieldsToString(data);
     res.status(200).json(hoaRateResponse);
   } catch (err) {
     console.error('Error fetching garbage rate:', err);

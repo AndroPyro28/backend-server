@@ -19,21 +19,29 @@ tinify.key = process.env.TINIFY_API_KEY;
 
 // Helper function to recursively convert Decimal128 fields to strings
 function convertDecimal128FieldsToString(data) {
-    if (Array.isArray(data)) {
-      return data.map(convertDecimal128FieldsToString);
-    }
-    
-    if (typeof data === 'object' && data !== null) {
-      for (const key in data) {
-        if (data[key] && data[key]._bsontype === 'Decimal128') {
-          data[key] = data[key].toString(); // Convert to string
-        } else if (typeof data[key] === 'object') {
-          data[key] = convertDecimal128FieldsToString(data[key]); // Recursively handle nested objects
+  if (Array.isArray(data)) {
+    return data.map(convertDecimal128FieldsToString);
+  }
+
+  if (typeof data === "object" && data !== null) {
+    const newData = {};
+
+    for (const key in data) {
+      if (typeof data[key] === "object" && data[key] !== null) {
+        if ("$numberDecimal" in data[key]) {
+          newData[key] = data[key]["$numberDecimal"]; // Extract the actual number
+        } else {
+          newData[key] = convertDecimal128FieldsToString(data[key]); // Recursively process objects
         }
+      } else {
+        newData[key] = data[key];
       }
     }
-  
-    return data;
+
+    return newData;
+  }
+
+  return data;
 }
   
 
@@ -140,9 +148,9 @@ router.get('/users', async (req, res) => {
       if (!user || user.length === 0) {
         return res.status(404).json({ error: 'User not found' });  // Handle case where user is not found
       }
-      
+      const data = JSON.parse(JSON.stringify(user[0]))
       // Convert all Decimal128 fields to strings, including nested ones
-      const userResponse = convertDecimal128FieldsToString(user[0]);
+      const userResponse = convertDecimal128FieldsToString(data);
       res.status(200).json(userResponse);
     } catch (err) {
       console.error('Error fetching user:', err);
@@ -316,9 +324,10 @@ router.get('/users', async (req, res) => {
       if (!properties || properties.length === 0) {
         return res.status(404).json({ error: 'No properties found for this user' });
       }
-  
+      
+      const data = JSON.parse(JSON.stringify(properties))
       // Convert all Decimal128 fields to strings, including nested ones
-      const propertiesResponse = properties.map(convertDecimal128FieldsToString);
+      const propertiesResponse = data.map(convertDecimal128FieldsToString);
       res.status(200).json(propertiesResponse);
   
     } catch (err) {
@@ -511,9 +520,10 @@ router.get('/properties/:prop_id', async (req, res) => {
       if (!property || property.length === 0) {
         return res.status(404).json({ error: 'Property not found' });
       }
-  
+      
+      const data = JSON.parse(JSON.stringify(property[0]))
       // Convert all Decimal128 fields to strings, including nested ones
-      const propertyResponse = convertDecimal128FieldsToString(property[0]);
+      const propertyResponse = convertDecimal128FieldsToString(data);
       res.status(200).json(propertyResponse);
   
     } catch (err) {
@@ -700,9 +710,9 @@ router.get('/properties/:prop_id/latest_statement_water_consump', async (req, re
   
         // Extract the bll_water_consump value from the latest statement
         const { bll_water_consump } = latestStatement[0];
-  
+        const data = JSON.parse(JSON.parse(bll_water_consump))
         // Convert all Decimal128 fields to strings, including nested ones
-        const propertyResponse = convertDecimal128FieldsToString(bll_water_consump);
+        const propertyResponse = convertDecimal128FieldsToString(data);
         res.status(200).json(propertyResponse);
     } catch (err) {
         console.error('Error fetching latest water consumption:', err);
@@ -780,9 +790,10 @@ router.get('/transactions', async (req, res) => {
       if (!transactions || transactions.length === 0) {
         return res.status(404).json({ error: 'No transactions found' });
       }
-  
+      
+      const data = JSON.parse(JSON.stringify(transactions))
       // Convert all Decimal128 fields to strings, including nested ones
-      const transactionsResponse = transactions.map(convertDecimal128FieldsToString);
+      const transactionsResponse = data.map(convertDecimal128FieldsToString);
       res.status(200).json(transactionsResponse);
     } catch (err) {
       console.error('[SERVER] Error fetching transactions:', err);
@@ -801,9 +812,10 @@ router.get('/wallet', async (req, res) => {
       const database = getDb(); // Get the database instance
       const walletCollection = database.collection('villwallet'); // Access the 'wallet' collection
       const wallet = await walletCollection.find({}).toArray(); // Fetch all wallet from the collection
-  
+      
+      const data = JSON.parse(JSON.stringify(wallet[0]))
       // Convert all Decimal128 fields to strings, including nested ones
-      const walletResponse = convertDecimal128FieldsToString(wallet[0]);
+      const walletResponse = convertDecimal128FieldsToString(data);
       res.status(200).json(walletResponse);
     } catch (err) {
       console.error('[SERVER] Error fetching data:', err);
