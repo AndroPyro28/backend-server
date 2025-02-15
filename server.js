@@ -7,6 +7,7 @@ import user from './services/controllers/user.js';
 import officer from './services/controllers/officer.js';
 import transaction from './services/controllers/transaction.js';
 import property from './services/controllers/property.js';
+import report from './services/controllers/report.js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { ExpressAuth } from '@auth/express';
@@ -103,6 +104,7 @@ const startServer = async () => {
     app.use('/api/user', user);
     app.use('/api/transaction', transaction);
     app.use('/api/property', property);
+    app.use('/api/report', report);
     app.listen(port, () => {
       console.log(`[SERVER] Ready on http://localhost:${port}`);
     });
