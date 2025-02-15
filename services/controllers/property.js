@@ -11,7 +11,7 @@ const router = express.Router();
 router.put("/:propId", async (req, res) => {
   const { propId } = req.params;
   const { lot, image, street, homeOwnerId } = req.body;
-  console.log(lot, image, street, homeOwnerId)
+  console.log(lot, image, street, homeOwnerId, image)
   try {
     const database = getDb();
     const propertiesCollection = database.collection("properties");
