@@ -31,7 +31,31 @@ const authenticateToken = (req, res, next) => {
 };
 
 
-
+function convertDecimal128FieldsToString(data) {
+    if (Array.isArray(data)) {
+      return data.map(convertDecimal128FieldsToString);
+    }
+  
+    if (typeof data === "object" && data !== null) {
+      const newData = {};
+  
+      for (const key in data) {
+        if (typeof data[key] === "object" && data[key] !== null) {
+          if ("$numberDecimal" in data[key]) {
+            newData[key] = data[key]["$numberDecimal"]; // Extract the actual number
+          } else {
+            newData[key] = convertDecimal128FieldsToString(data[key]); // Recursively process objects
+          }
+        } else {
+          newData[key] = data[key];
+        }
+      }
+  
+      return newData;
+    }
+  
+    return data;
+  }
 
 
 // =========================== LOGIN AND LOGOUT ROUTES ===========================
@@ -203,7 +227,7 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
         }
 
         const property = await dbClient.collection('properties').findOne({ _id: new ObjectId(propId) });
-
+        const data = JSON.parse(JSON.stringify(property));
         if (!property) {
             return res.status(404).json({ error: 'Property not found.' });
         }

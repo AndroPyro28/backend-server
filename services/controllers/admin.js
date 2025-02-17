@@ -417,6 +417,43 @@ router.put("/profile/:userId", async (req, res) => {
   }
 });
 
+router.get('/properties-by-propId/:propId',  async (req, res) => {
+  const { propId } = req.params;
+  try {
+      const dbClient = getDb();
+
+      if (!ObjectId.isValid(propId)) {
+          return res.status(400).json({ error: 'Invalid property ID format.' });
+      }
+
+      const property = await dbClient.collection('properties').findOne({ _id: new ObjectId(propId) });
+      if (!property) {
+          return res.status(404).json({ error: 'Property not found.' });
+      }
+      const data = JSON.parse(JSON.stringify(property));
+      const propertyData = convertDecimal128FieldsToString(data);
+      const convertDecimal = (value) => {
+          if (value && value.$numberDecimal) {
+              return parseFloat(value.$numberDecimal);
+          }
+          return value || 0;
+      };
+
+      const convertedProperty = {
+          ...propertyData,
+          prop_curr_amt_due: Number(propertyData.prop_curr_amt_due),
+          prop_curr_hoamaint_fee: Number(propertyData.prop_curr_hoamaint_fee),
+          prop_curr_water_charges: Number(propertyData.prop_curr_water_charges),
+          prop_curr_garb_fee: Number(propertyData.prop_curr_garb_fee),
+      };
+
+      res.status(200).json(convertedProperty);
+  } catch (error) {
+      res.status(500).json({ error: 'Error fetching property details.' });
+  }
+});
+
+
 // GET /api/users/:usr_id/properties - Fetch properties specific to a user by usr_id
 router.get("/users/:usr_id/properties", async (req, res) => {
   const { usr_id } = req.params;
