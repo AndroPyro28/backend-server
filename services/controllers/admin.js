@@ -16,7 +16,10 @@ tinify.key = process.env.TINIFY_API_KEY;
 // ----
 // HELPER FUNCTIONS
 // ----
-
+const generateId = (prefix, uppercase = false) => {
+  const randomString = Math.random().toString(36).substring(2, 12); // Generate 10 characters
+  return `${prefix}${uppercase ? randomString.toUpperCase() : randomString}`;
+};
 // Helper function to recursively convert Decimal128 fields to strings
 function convertDecimal128FieldsToString(data) {
   if (Array.isArray(data)) {
@@ -428,8 +431,10 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
 
       const property = await dbClient.collection('properties').findOne({ _id: new ObjectId(propId) });
       if (!property) {
-          return res.status(404).json({ error: 'Property not found.' });
+        return res.status(404).json({ error: 'Property not found.' });
       }
+      const billingStatements = await dbClient.collection("statements").find({bill_id: property.prop_id}).toArray()
+
       const data = JSON.parse(JSON.stringify(property));
       const propertyData = convertDecimal128FieldsToString(data);
       const convertDecimal = (value) => {
@@ -438,13 +443,14 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
           }
           return value || 0;
       };
-
+      
       const convertedProperty = {
           ...propertyData,
           prop_curr_amt_due: Number(propertyData.prop_curr_amt_due),
           prop_curr_hoamaint_fee: Number(propertyData.prop_curr_hoamaint_fee),
           prop_curr_water_charges: Number(propertyData.prop_curr_water_charges),
           prop_curr_garb_fee: Number(propertyData.prop_curr_garb_fee),
+          billingStatements
       };
 
       res.status(200).json(convertedProperty);
@@ -452,6 +458,104 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
       res.status(500).json({ error: 'Error fetching property details.' });
   }
 });
+
+router.post('/transactions/:propId', async (req, res) => {
+  try {
+      const { propId } = req.params;
+      const {
+          trn_type, // ["water charges", "HOA charges", "All"]
+          trn_user_init,
+          trn_created_at,
+          trn_purp,
+          trn_method,
+          trn_amount,
+          trn_image_url,
+          bill_id
+      } = req.body;
+
+      if (!trn_type || !trn_purp || !trn_method || !trn_image_url || !bill_id) {
+          return res.status(400).json({ message: 'Missing required fields.' });
+      }
+
+      if (trn_purp !== "All" && (trn_amount === undefined || isNaN(parseFloat(trn_amount)))) {
+          return res.status(400).json({ message: 'Invalid transaction amount.' });
+      }
+
+      const dbClient = getDb();
+      const bill = await dbClient.collection('statements').findOne({ bll_id: bill_id });
+
+      if (!bill) {
+          return res.status(404).json({ message: 'Billing statement not found.' });
+      }
+
+      // Generate transaction ID
+      const trn_id = generateId('CVT');
+      const paymentAmount = parseFloat(trn_amount);
+
+      // Update specific payment breakdown
+      let newPaidBreakdown = { ...bill.bll_paid_breakdown };
+      let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount; // ✅ Fix: Convert to number
+
+      if (trn_purp === "Water Bill") {
+          newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
+      } else if (trn_purp === "HOA Maintenance Fees") {
+          newPaidBreakdown.hoa = (bill.bll_paid_breakdown?.hoa || 0) + paymentAmount;
+      } else if (trn_purp === "Garbage") {
+          newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount; 
+      } else if (trn_purp === "All") {
+          newPaidBreakdown.water = bill.bll_water_charges;
+          newPaidBreakdown.hoa = bill.bll_hoamaint_fee;
+          newPaidBreakdown.garbage = bill.bll_garb_charges; 
+      }
+
+      // ✅ Fix: Ensure all charge types are fully paid
+      const isWaterPaid = newPaidBreakdown.water >= bill.bll_water_charges;
+      const isHoaPaid = newPaidBreakdown.hoa >= bill.bll_hoamaint_fee;
+      const isGarbagePaid = newPaidBreakdown.garbage >= bill.bll_garb_charges;
+
+      // ✅ Fix: Consider all charges before marking "paid"
+      const newPayStat = (isWaterPaid && isHoaPaid && isGarbagePaid) ? "paid" : "pending";
+
+      // Insert transaction
+      const transaction = {
+          trn_id,
+          trn_type,
+          trn_user_init,
+          trn_created_at: new Date(trn_created_at),
+          trn_purp,
+          trn_method,
+          trn_amount: paymentAmount,
+          trn_status: 'completed',
+          trn_image_url,
+          bill_id
+      };
+
+      await dbClient.collection('transactions').insertOne(transaction);
+
+      // Update billing statement
+      await dbClient.collection('statements').updateOne(
+          { bll_id: bill_id }, // Find statement by bill ID
+          {
+              $set: {
+                  bll_total_paid: newTotalPaid.toFixed(2), // ✅ Fix: Store it as a properly formatted number string
+                  bll_pay_stat: newPayStat,
+                  bll_paid_breakdown: newPaidBreakdown
+              }
+          },
+          { upsert: true }
+      );
+
+      res.status(201).json({
+          message: 'Transaction created and billing statement updated successfully.',
+          transactionId: trn_id,
+      });
+
+  } catch (error) {
+      console.error('Error processing transaction:', error);
+      res.status(500).json({ message: 'Internal server error.' });
+  }
+});
+
 
 
 // GET /api/users/:usr_id/properties - Fetch properties specific to a user by usr_id

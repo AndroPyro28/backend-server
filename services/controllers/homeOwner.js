@@ -202,7 +202,7 @@ router.get('/properties/:userId',  async (req, res) => {
             return res.status(200).json({ properties: [] });
         }
 
-        console.log(`Found properties for userId: ${userId}`, properties); // Debugging
+        // console.log(`Found properties for userId: ${userId}`, properties); // Debugging
         res.status(200).json({ properties });
     } catch (error) {
         console.error('Error fetching properties:', error);
@@ -227,17 +227,18 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
         }
 
         const property = await dbClient.collection('properties').findOne({ _id: new ObjectId(propId) });
-        const data = JSON.parse(JSON.stringify(property));
         if (!property) {
             return res.status(404).json({ error: 'Property not found.' });
         }
-
+        const billingStatements = await dbClient.collection("statements").find({bll_prop_id: property.prop_id, bll_pay_stat: "pending" }).toArray()
         const convertDecimal = (value) => {
             if (value && value.$numberDecimal) {
                 return parseFloat(value.$numberDecimal);
             }
             return value || 0;
         };
+        const billingStatementsData = JSON.parse(JSON.stringify(billingStatements));
+        const data = convertDecimal128FieldsToString(billingStatementsData)
 
         const convertedProperty = {
             ...property,
@@ -245,6 +246,7 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
             prop_curr_hoamaint_fee: convertDecimal(property.prop_curr_hoamaint_fee),
             prop_curr_water_charges: convertDecimal(property.prop_curr_water_charges),
             prop_curr_garb_fee: convertDecimal(property.prop_curr_garb_fee),
+            billingStatements: data
         };
 
         res.status(200).json(convertedProperty);
@@ -502,37 +504,122 @@ const generateId = (prefix, uppercase = false) => {
 
 
 // =========================== TRANSACTION ROUTES ===========================
-router.post('/transactions/:propId',  async (req, res) => {
+// router.post('/transactions/:propId',  async (req, res) => {
+//     try {
+//         const { propId } = req.params;
+//         const {
+//             trn_type,
+//             trn_user_init,
+//             trn_created_at,
+//             trn_purp,
+//             trn_method,
+//             trn_amount,
+//             trn_image_url,
+//             bill_id
+//         } = req.body;
+
+//         console.log(req.body)
+//         if (!trn_type || !trn_purp || !trn_method || (trn_purp !== "All" && !trn_amount)|| !trn_image_url || !bill_id) {
+//             return res.status(400).json({ message: 'Missing required fields.' });
+//         }
+
+//         const dbClient = getDb();
+
+//         if (!ObjectId.isValid(propId)) {
+//             return res.status(400).json({ message: 'Invalid property ID.' });
+//         }
+
+//         const property = await dbClient.collection('properties').findOne({ _id: new ObjectId(propId) });
+//         if (!property) {
+//             return res.status(404).json({ message: 'Property not found.' });
+//         }
+
+//         // Generate a unique transaction ID with mixed case characters
+//         const trn_id = generateId('CVT'); 
+
+//         const transaction = {
+//             trn_id,
+//             trn_type,
+//             trn_user_init,
+//             trn_created_at: new Date(trn_created_at),
+//             trn_purp,
+//             trn_method,
+//             trn_amount: parseFloat(trn_amount),
+//             trn_status: 'pending',
+//             trn_image_url,
+//             bill_id
+//         };
+
+//         await dbClient.collection('transactions').insertOne(transaction);
+
+//         res.status(201).json({
+//             message: 'Transaction created successfully.',
+//             transactionId: trn_id,
+//         });
+//     } catch (error) {
+//         console.error('Error creating transaction:', error);
+//         res.status(500).json({ message: 'Internal server error.' });
+//     }
+// });
+
+router.post('/transactions/:propId', async (req, res) => {
     try {
         const { propId } = req.params;
         const {
-            trn_type,
+            trn_type, // ["water charges", "HOA charges", "All"]
             trn_user_init,
             trn_created_at,
             trn_purp,
             trn_method,
             trn_amount,
             trn_image_url,
+            bill_id
         } = req.body;
 
-        if (!trn_type || !trn_purp || !trn_method || !trn_amount || !trn_image_url) {
+        if (!trn_type || !trn_purp || !trn_method || !trn_image_url || !bill_id) {
             return res.status(400).json({ message: 'Missing required fields.' });
         }
 
+        if (trn_purp !== "All" && (trn_amount === undefined || isNaN(parseFloat(trn_amount)))) {
+            return res.status(400).json({ message: 'Invalid transaction amount.' });
+        }
+
         const dbClient = getDb();
+        const bill = await dbClient.collection('statements').findOne({ bll_id: bill_id });
 
-        if (!ObjectId.isValid(propId)) {
-            return res.status(400).json({ message: 'Invalid property ID.' });
+        if (!bill) {
+            return res.status(404).json({ message: 'Billing statement not found.' });
         }
 
-        const property = await dbClient.collection('properties').findOne({ _id: new ObjectId(propId) });
-        if (!property) {
-            return res.status(404).json({ message: 'Property not found.' });
+        // Generate transaction ID
+        const trn_id = generateId('CVT');
+        const paymentAmount = parseFloat(trn_amount);
+
+        // Update specific payment breakdown
+        let newPaidBreakdown = { ...bill.bll_paid_breakdown };
+        let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount; // ✅ Fix: Convert to number
+
+        if (trn_purp === "Water Bill") {
+            newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
+        } else if (trn_purp === "HOA Maintenance Fees") {
+            newPaidBreakdown.hoa = (bill.bll_paid_breakdown?.hoa || 0) + paymentAmount;
+        } else if (trn_purp === "Garbage") {
+            newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount; 
+        } else if (trn_purp === "All") {
+            newPaidBreakdown.water = bill.bll_water_charges;
+            newPaidBreakdown.hoa = bill.bll_hoamaint_fee;
+            newPaidBreakdown.garbage = bill.bll_garb_charges; 
         }
 
-        // Generate a unique transaction ID with mixed case characters
-        const trn_id = generateId('CVT'); 
+        // ✅ Fix: Ensure all charge types are fully paid
+        const isWaterPaid = newPaidBreakdown.water >= bill.bll_water_charges;
+        const isHoaPaid = newPaidBreakdown.hoa >= bill.bll_hoamaint_fee;
+        const isGarbagePaid = newPaidBreakdown.garbage >= bill.bll_garb_charges;
 
+        // ✅ Fix: Consider all charges before marking "paid"
+        const newPayStat = (isWaterPaid && isHoaPaid && isGarbagePaid) ? "paid" : "pending";
+
+        // Insert transaction
         const transaction = {
             trn_id,
             trn_type,
@@ -540,22 +627,38 @@ router.post('/transactions/:propId',  async (req, res) => {
             trn_created_at: new Date(trn_created_at),
             trn_purp,
             trn_method,
-            trn_amount: parseFloat(trn_amount),
+            trn_amount: paymentAmount,
             trn_status: 'pending',
             trn_image_url,
+            bill_id
         };
 
         await dbClient.collection('transactions').insertOne(transaction);
 
+        // Update billing statement
+        await dbClient.collection('statements').updateOne(
+            { bll_id: bill_id }, // Find statement by bill ID
+            {
+                $set: {
+                    bll_total_paid: newTotalPaid.toFixed(2), // ✅ Fix: Store it as a properly formatted number string
+                    bll_pay_stat: newPayStat,
+                    bll_paid_breakdown: newPaidBreakdown
+                }
+            },
+            { upsert: true }
+        );
+
         res.status(201).json({
-            message: 'Transaction created successfully.',
+            message: 'Transaction created and billing statement updated successfully.',
             transactionId: trn_id,
         });
+
     } catch (error) {
-        console.error('Error creating transaction:', error);
+        console.error('Error processing transaction:', error);
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+
 
 
 // =========================== WALLET ROUTES ===========================
