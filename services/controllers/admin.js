@@ -1030,6 +1030,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
       bll_other_coll: formattedOtherColl,
       bll_total_paid: Decimal128.fromString("0.00"),
       bll_total_amt_due: Decimal128.fromString((totalBill || 0).toFixed(2)),
+      transactions_status:"pending"
     };
 
     // Insert the new billing statement into the database
