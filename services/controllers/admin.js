@@ -979,20 +979,20 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
     // Convert `billCovPeriod` to a sortable format (e.g., 2024-01)
     const [month, year] = billCovPeriod.split(" ");
     const monthMapping = {
-      January: "01",
-      February: "02",
-      March: "03",
-      April: "04",
-      May: "05",
-      June: "06",
-      July: "07",
-      August: "08",
-      September: "09",
-      October: "10",
-      November: "11",
-      December: "12",
+      january: "01",
+      february: "02",
+      march: "03",
+      april: "04",
+      may: "05",
+      june: "06",
+      july: "07",
+      august: "08",
+      september: "09",
+      october: "10",
+      november: "11",
+      december: "12",
     };
-    const sortableBillPeriod = `${year}-${monthMapping[month]}`; // Format as YYYY-MM
+    const sortableBillPeriod = `${year}-${monthMapping[month.toLowerCase()]}`; // Format as YYYY-MM
     const parsedBillPeriodDate = new Date(`${sortableBillPeriod}-01T00:00:00Z`); // Parse as a Date
 
     // Compress and upload the image
@@ -1052,10 +1052,10 @@ router.get("/properties/:prop_id/statements", async (req, res) => {
 
     // Query all statements for the given property ID
     const statements = await billingStatementsCollection
-      .find({ bll_prop_id: prop_id }) // Filter by the specific property ID
-      .sort({ bll_bill_cov_period_date: -1 }) // Sort by creation date in descending order
-      .toArray(); // Convert to an array
-
+    .find({ bll_prop_id: prop_id }) // Filter by the specific property ID
+    .sort({ bll_bill_cov_period_date: -1 }) // Sort by creation date in descending order
+    .toArray(); // Convert to an array
+    
     // Return an empty array if no billing statements are found
     res.status(200).json(statements || []);
   } catch (err) {
