@@ -699,6 +699,70 @@ router.post('/wallet',  async (req, res) => {
         res.status(500).json({ message: 'Internal server error.' });
     }
 });
+router.get("/dashboard", async (req, res) => {
+    const {userId} = req.query
+
+    try {
+      const database = getDb();
+      if (!database) {
+        throw new Error("Database connection failed.");
+      }
+      if(!userId) {
+        return res.status(400).json({ error: "userId Not Found" });
+      }
+      const statementCollections = database.collection("statements");
+      const userCollections = database.collection("users");
+      const walletCollection = database.collection("wallet");
+  
+      // Get the first and last day of the current month
+     
+      const currentUser = await userCollections.findOne({usr_id: userId})
+      const wallet = await walletCollection.findOne({wall_owner: userId})
+
+      if(!currentUser) {
+        return res.status(404).json({ error: "User Not Found" });
+      }
+
+      if(!wallet) {
+        return res.status(404).json({ error: "Wallet Not Found" });
+      }
+
+      const walletData = convertDecimal128FieldsToString(JSON.parse(JSON.stringify(wallet)))
+
+
+      // Fetch transactions only for the current month using 'trn_created_at'
+      const statements = await statementCollections
+        .find()
+        .toArray();
+      const billSummary = statements.reduce(
+        (current, statement) => {
+            if(statement.bll_user_rec.toString() == currentUser?._id.toString()) {
+                // computing all the bills that you already pay
+                if("bll_paid_breakdown" in statement) {
+                    current.billsHaveBeenPaid.total += parseFloat(statement?.bll_paid_breakdown?.water) + parseFloat(statement?.bll_paid_breakdown?.hoa) + parseFloat(statement?.bll_paid_breakdown?.garbage)
+                    current.billsHaveBeenPaid.garbage += parseFloat(statement?.bll_paid_breakdown?.garbage) || 0
+                    current.billsHaveBeenPaid.hoa += parseFloat(statement?.bll_paid_breakdown?.hoa) || 0
+                    current.billsHaveBeenPaid.water += parseFloat(statement?.bll_paid_breakdown?.water) || 0
+                }
+
+                // computing all the bills
+                    current.initialAmounts.total += parseFloat(statement?.bll_water_charges) + parseFloat(statement?.bll_hoamaint_fee) + parseFloat(statement?.bll_garb_charges)
+                    current.initialAmounts.garbage += parseFloat(statement?.bll_garb_charges) || 0
+                    current.initialAmounts.hoa += parseFloat(statement?.bll_hoamaint_fee) || 0
+                    current.initialAmounts.water += parseFloat(statement?.bll_water_charges) || 0
+            }
+
+            return current
+        },
+        { billsHaveBeenPaid: {garbage: 0, hoa: 0, water:0, total: 0}, initialAmounts: {garbage: 0, hoa: 0, water:0, total: 0}}
+      );
+  
+      res.status(200).json({billSummary, wallet: walletData});
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  });
 
 
 export default router;
