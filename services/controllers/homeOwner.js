@@ -240,12 +240,14 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
         const billingStatementsData = JSON.parse(JSON.stringify(billingStatements));
         const data = convertDecimal128FieldsToString(billingStatementsData)
 
+        
+        const currentBill = data.length > 0 ? data[data.length - 1] : null
         const convertedProperty = {
             ...property,
-            prop_curr_amt_due: convertDecimal(property.prop_curr_amt_due),
-            prop_curr_hoamaint_fee: convertDecimal(property.prop_curr_hoamaint_fee),
-            prop_curr_water_charges: convertDecimal(property.prop_curr_water_charges),
-            prop_curr_garb_fee: convertDecimal(property.prop_curr_garb_fee),
+            prop_curr_amt_due: convertDecimal(currentBill.bll_total_amt_due),
+            prop_curr_hoamaint_fee: convertDecimal(currentBill.bll_hoamaint_fee),
+            prop_curr_water_charges: convertDecimal(currentBill.bll_water_charges),
+            prop_curr_garb_fee: convertDecimal(currentBill.bll_garb_charges),
             billingStatements: data
         };
 
