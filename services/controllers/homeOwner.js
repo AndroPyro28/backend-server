@@ -127,58 +127,6 @@ router.get('/header/:userId', async (req, res) => {
 });
 
 // Update User Profile
-router.put('/profile/:userId',  async (req, res) => {
-    const { userId } = req.params;
-    const { usr_first_name, usr_last_name, usr_username, usr_phone, usr_email, new_password } = req.body;
-
-    console.log('Received update request for user:', userId);
-
-    try {
-        const dbClient = getDb();
-
-        // Check if the user exists before updating
-        const existingUser = await dbClient.collection('users').findOne({ usr_id: userId });
-
-        if (!existingUser) {
-            console.error('User not found:', userId);
-            return res.status(404).json({ error: 'User not found.' });
-        }
-
-        // Prepare the update object
-        const updateFields = {
-            usr_first_name,
-            usr_last_name,
-            usr_username,
-            usr_phone,
-            usr_email,
-        };
-
-        if (new_password) {
-            const hashedPassword = await bcrypt.hash(new_password, 10);
-            updateFields.usr_password = hashedPassword;
-        }
-
-        // Update the user
-        const result = await dbClient.collection('users').updateOne(
-            { usr_id: userId },
-            { $set: updateFields }
-        );
-
-        if (result.matchedCount === 0) {
-            console.error('Failed to match user during update:', userId);
-            return res.status(404).json({ error: 'User not found.' });
-        }
-
-        console.log('Profile updated successfully for user:', userId);
-        res.json({ message: 'Profile updated successfully.' });
-    } catch (error) {
-        console.error('Error updating user profile:', error);
-        res.status(500).json({ error: 'An error occurred while updating user profile.' });
-    }
-});
-
-
-
 
 // =========================== PROPERTY ROUTES ===========================
 
@@ -244,10 +192,10 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
         const currentBill = data.length > 0 ? data[data.length - 1] : null
         const convertedProperty = {
             ...property,
-            prop_curr_amt_due: convertDecimal(currentBill.bll_total_amt_due),
-            prop_curr_hoamaint_fee: convertDecimal(currentBill.bll_hoamaint_fee),
-            prop_curr_water_charges: convertDecimal(currentBill.bll_water_charges),
-            prop_curr_garb_fee: convertDecimal(currentBill.bll_garb_charges),
+            prop_curr_amt_due: convertDecimal(currentBill?.bll_total_amt_due || 0),
+            prop_curr_hoamaint_fee: convertDecimal(currentBill?.bll_hoamaint_fee || 0),
+            prop_curr_water_charges: convertDecimal(currentBill?.bll_water_charges || 0),
+            prop_curr_garb_fee: convertDecimal(currentBill?.bll_garb_charges || 0),
             billingStatements: data
         };
 
@@ -440,60 +388,104 @@ function generateAuthToken(user) {
 }
 
 // Fetch user profile by ID
-router.get('/profile/:userId', async (req, res) => {
+router.get("/profile/:userId", async (req, res) => {
     const { userId } = req.params;
-
+  
     try {
-        const dbClient = getDb();
-        const userData = await dbClient.collection('users').findOne({ usr_id: userId });
-
-        if (!userData) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json({
-            userFirstName: userData.usr_first_name,
-            userLastName: userData.usr_last_name,
-            userUsername: userData.usr_username,
-            userPhone: userData.usr_phone,
-            userEmail: userData.usr_email
-        });
+      const dbClient = getDb();
+      const userData = await dbClient
+        .collection("users")
+        .findOne({ usr_id: userId });
+  
+      if (!userData) {
+        return res.status(404).json({ error: "User not found" });
+      }
+  
+      res.json({
+        userFirstName: userData.usr_first_name,
+        userLastName: userData.usr_last_name,
+        userUsername: userData.usr_username,
+        userPhone: userData.usr_phone,
+        userEmail: userData.usr_email,
+        userProfile: userData.usr_profile_photo,
+      });
     } catch (error) {
-        console.error('Error fetching user data:', error);
-        res.status(500).json({ error: 'An error occurred while fetching user data' });
+      console.error("Error fetching user data:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while fetching user data" });
     }
-});
+  });
 
 
 // Update user profile
-router.put('/profile/:userId', async (req, res) => {
+router.put("/profile/:userId", async (req, res) => {
     const { userId } = req.params;
-    const { usr_first_name, usr_last_name, usr_phone, usr_email } = req.body;
-
+    const {
+      usr_first_name,
+      usr_last_name,
+      usr_phone,
+      usr_email,
+      new_password,
+      new_imageUrl,
+      usr_username,
+    } = req.body;
     try {
-        const dbClient = getDb();
-        const result = await dbClient.collection('users').updateOne(
-            { usr_id: userId },
-            {
-                $set: {
-                    usr_first_name,
-                    usr_last_name,
-                    usr_phone,
-                    usr_email
-                }
-            }
-        );
-
-        if (result.matchedCount === 0) {
-            return res.status(404).json({ message: 'User not found' });
+      const dbClient = getDb();
+      let newPassword;
+  
+      if (new_password) {
+        const hashPwd = await bcrypt.hash(new_password, 16);
+        newPassword = hashPwd;
+      }
+  
+      let updateField = {
+        usr_first_name,
+        usr_last_name,
+        usr_phone,
+        usr_username,
+        usr_email,
+        usr_profile_photo: new_imageUrl,
+         usr_password: newPassword ?? undefined,
+      };
+  
+       updateField = Object.fromEntries(
+        Object.entries({
+          usr_first_name,
+          usr_last_name,
+          usr_phone,
+          usr_username,
+          usr_email,
+          usr_profile_photo: new_imageUrl,
+          usr_password: newPassword ?? undefined,
+        }).filter(([_, value]) => value !== undefined && value !== null && value.toString().trim() !== "")
+      );
+  
+      const userExist = await dbClient
+        .collection("users")
+        .findOne({ usr_username });
+  
+      if ((userExist || userExist?.usr_id) && userExist.usr_id != userId) {
+        return res.status(400).json({ message: "Username already exist" });
+      }
+  
+      const result = await dbClient.collection("users").updateOne(
+        { usr_id: userId },
+        {
+          $set: updateField,
         }
-
-        res.json({ message: 'Profile updated successfully' });
+      );
+      
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      res.json({ message: "Profile updated successfully" });
     } catch (error) {
-        console.error('Error updating user profile:', error);
-        res.status(500).json({ message: 'Server error' });
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Server error" });
     }
-});
+  });
 
 
 
