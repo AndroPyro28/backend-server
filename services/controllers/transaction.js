@@ -85,8 +85,6 @@ router.put("/update-status/:id", async (req, res) => {
           { wall_id: homeOwnerWallet.wall_id, wall_owner: homeOwnerWallet.wall_owner },
           { $inc: { wall_bal: exceedAmount } }
         );
-
-        
       }
 
       await villWalletCollection.updateOne(
