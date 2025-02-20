@@ -63,12 +63,12 @@ router.put("/update-status/:id", async (req, res) => {
         { bll_id: billingStatement.bll_id },
         { $set: { transactions_status: "completed" } }
       );
+      const villWalletCollection = database.collection("villwallet");
       const villageWallet = await villWalletCollection.findOne();
 
       const completedTransaction = transactions.find(t => t.trn_type === "Advanced Payment" && t.trn_status === "completed")
       // If it's an advanced payment, update wallets
       if (transactions.length > 0 && completedTransaction?.trn_type === "Advanced Payment") {
-        const villWalletCollection = database.collection("villwallet");
         const walletCollection = database.collection("wallet");
 
         const homeOwnerWallet = await walletCollection.findOne({ wall_owner: transaction.trn_user_init });
