@@ -211,44 +211,75 @@ router.get('/properties-by-propId/:propId',  async (req, res) => {
 // =========================== BILLING STATEMENTS ROUTES ===========================
 
 // Fetch Billing Statements for a User
-router.get('/statements',  async (req, res) => {
-    const { userId } = req.query; // Extract userId from JWT payload
-    console.log(`Received userId: '${userId}'`); // Log userId for debugging
+// router.get('/statements',  async (req, res) => {
+//     const { userId } = req.query; // Extract userId from JWT payload
+//     console.log(`Received userId: '${userId}'`); // Log userId for debugging
 
-    try {
-        const dbClient = getDb();
+//     try {
+//         const dbClient = getDb();
 
-        // Query the `properties` collection to find the `prop_owner` ObjectId
-        const property = await dbClient.collection('properties').findOne({ prop_owner_id: userId.trim() });
+//         // Query the `properties` collection to find the `prop_owner` ObjectId
+//         const property = await dbClient.collection('properties').findOne({ prop_owner_id: userId.trim() });
 
-        if (!property) {
-            console.log(`No property found for userId: ${userId}`);
-            return res.status(404).json({ error: 'No properties found for this user.' });
-        }
+//         if (!property) {
+//             console.log(`No property found for userId: ${userId}`);
+//             return res.status(404).json({ error: 'No properties found for this user.' });
+//         }
 
-        const propOwnerId = property.prop_owner; // Retrieve the ObjectId for the owner
+//         const propOwnerId = property.prop_owner; // Retrieve the ObjectId for the owner
 
-        console.log('Found propOwnerId:', propOwnerId); // Log the retrieved ObjectId
+//         console.log('Found propOwnerId:', propOwnerId); // Log the retrieved ObjectId
 
-        // Query the `statements` collection using the `prop_owner` ObjectId
-        const query = { bll_user_rec: propOwnerId }; // Match the correct ObjectId
-        const statements = await dbClient.collection('statements').find(query).toArray();
+//         // Query the `statements` collection using the `prop_owner` ObjectId
+//         const query = { bll_user_rec: propOwnerId }; // Match the correct ObjectId
+//         const statements = await dbClient.collection('statements').find(query).toArray();
 
-        if (!statements.length) {
-            console.log(`No statements found for propOwnerId: ${propOwnerId}`);
-            return res.status(200).json({ statements: [] });
-        }
+//         if (!statements.length) {
+//             console.log(`No statements found for propOwnerId: ${propOwnerId}`);
+//             return res.status(200).json({ statements: [] });
+//         }
 
-        console.log(`Found statements for propOwnerId: ${propOwnerId}`, statements); // Debugging
-        res.status(200).json({ statements });
-    } catch (error) {
-        console.error('Error fetching statements:', error);
-        res.status(500).json({ error: 'An error occurred while fetching statements.' });
-    }
+//         console.log(`Found statements for propOwnerId: ${propOwnerId}`, statements); // Debugging
+//         res.status(200).json({ statements });
+//     } catch (error) {
+//         console.error('Error fetching statements:', error);
+//         res.status(500).json({ error: 'An error occurred while fetching statements.' });
+//     }
+// });
+
+
+router.get('/statements/:propId',  async (req, res) => {
+  const { propId } = req.params; // Extract userId from JWT payload
+  console.log("propId", propId)
+  try {
+      const dbClient = getDb();
+
+      // Query the `properties` collection to find the `prop_owner` ObjectId
+      const property = await dbClient.collection('properties').findOne({ _id: new ObjectId(propId) });
+
+      if (!property) {
+          console.log(`No property found for userId: ${propId}`);
+          return res.status(404).json({ error: 'No properties found for this user.' });
+      }
+
+
+
+      // Query the `statements` collection using the `prop_owner` ObjectId
+      const query = { bll_prop_id: property.prop_id }; // Match the correct ObjectId
+      const statements = await dbClient.collection('statements').find(query).toArray();
+
+      console.log(statements)
+      if (!statements.length) {
+          return res.status(200).json({ statements: [] });
+      }
+
+      console.log(`Found statements for ${propId}`, statements); // Debugging
+      res.status(200).json({ statements });
+  } catch (error) {
+      console.error('Error fetching statements:', error);
+      res.status(500).json({ error: 'An error occurred while fetching statements.' });
+  }
 });
-
-
-  
 
 // =========================== DASHBOARD ROUTE ===========================
 
