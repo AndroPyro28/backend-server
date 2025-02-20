@@ -50,7 +50,7 @@ router.put("/update-status/:id", async (req, res) => {
       (val, t) => { 
         if (t.trn_status === "completed") return t.trn_amount + val
 
-        return t.trn_amount;
+        return val;
       },
       0
     );
@@ -66,7 +66,7 @@ router.put("/update-status/:id", async (req, res) => {
 
       const completedTransaction = transactions.find(t => t.trn_type === "Advanced Payment" && t.trn_status === "completed")
       // If it's an advanced payment, update wallets
-      if (transactions.length > 0 && completedTransaction.trn_type === "Advanced Payment") {
+      if (transactions.length > 0 && completedTransaction?.trn_type === "Advanced Payment") {
         const villWalletCollection = database.collection("villwallet");
         const walletCollection = database.collection("wallet");
 
