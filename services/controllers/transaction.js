@@ -86,11 +86,14 @@ router.put("/update-status/:id", async (req, res) => {
           { $inc: { wall_bal: exceedAmount } }
         );
 
-        await villWalletCollection.updateOne(
-          { villwall_id: villageWallet.villwall_id },
-          { $inc: { villwall_tot_bal: parseFloat(billingStatement.bll_total_amt_due) } }
-        );
+        
       }
+
+      await villWalletCollection.updateOne(
+        { villwall_id: villageWallet.villwall_id },
+        { $inc: { villwall_tot_bal: parseFloat(billingStatement.bll_total_amt_due) } }
+      );
+      
     }
 
     return res.status(200).json({ result });
