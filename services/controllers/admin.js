@@ -463,7 +463,7 @@ router.post('/transactions/:propId', async (req, res) => {
   try {
       const { propId } = req.params;
       const {
-          trn_type, // ["water charges", "HOA charges", "All"]
+          trn_type,
           trn_user_init,
           trn_created_at,
           trn_purp,
@@ -488,35 +488,45 @@ router.post('/transactions/:propId', async (req, res) => {
           return res.status(404).json({ message: 'Billing statement not found.' });
       }
 
-      // Generate transaction ID
       const trn_id = generateId('CVT');
       const paymentAmount = parseFloat(trn_amount);
 
-      // Update specific payment breakdown
       let newPaidBreakdown = { ...bill.bll_paid_breakdown };
-      let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount; // ✅ Fix: Convert to number
+      let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount;
+
+      if (trn_method === "E-Wallet") {
+          const eWallet = await dbClient.collection('wallet').findOne({ wall_owner: trn_user_init });
+          if (!eWallet) {
+              return res.status(400).json({ message: 'E-Wallet not found.' });
+          }
+          if (eWallet.wall_bal < paymentAmount) {
+              return res.status(400).json({ message: 'Insufficient E-Wallet balance.' });
+          }
+
+          await dbClient.collection('wallet').updateOne(
+              { wall_owner: trn_user_init },
+              { $inc: { wall_bal: -paymentAmount } }
+          );
+      }
 
       if (trn_purp === "Water Bill") {
           newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
       } else if (trn_purp === "HOA Maintenance Fees") {
           newPaidBreakdown.hoa = (bill.bll_paid_breakdown?.hoa || 0) + paymentAmount;
       } else if (trn_purp === "Garbage") {
-          newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount; 
+          newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount;
       } else if (trn_purp === "All") {
           newPaidBreakdown.water = bill.bll_water_charges;
           newPaidBreakdown.hoa = bill.bll_hoamaint_fee;
-          newPaidBreakdown.garbage = bill.bll_garb_charges; 
+          newPaidBreakdown.garbage = bill.bll_garb_charges;
       }
 
-      // ✅ Fix: Ensure all charge types are fully paid
       const isWaterPaid = newPaidBreakdown.water >= bill.bll_water_charges;
       const isHoaPaid = newPaidBreakdown.hoa >= bill.bll_hoamaint_fee;
       const isGarbagePaid = newPaidBreakdown.garbage >= bill.bll_garb_charges;
 
-      // ✅ Fix: Consider all charges before marking "paid"
       const newPayStat = (isWaterPaid && isHoaPaid && isGarbagePaid) ? "paid" : "pending";
 
-      // Insert transaction
       const transaction = {
           trn_id,
           trn_type,
@@ -532,12 +542,11 @@ router.post('/transactions/:propId', async (req, res) => {
 
       await dbClient.collection('transactions').insertOne(transaction);
 
-      // Update billing statement
       await dbClient.collection('statements').updateOne(
-          { bll_id: bill_id }, // Find statement by bill ID
+          { bll_id: bill_id },
           {
               $set: {
-                  bll_total_paid: newTotalPaid.toFixed(2), // ✅ Fix: Store it as a properly formatted number string
+                  bll_total_paid: newTotalPaid.toFixed(2),
                   bll_pay_stat: newPayStat,
                   bll_paid_breakdown: newPaidBreakdown
               }
@@ -549,13 +558,11 @@ router.post('/transactions/:propId', async (req, res) => {
           message: 'Transaction created and billing statement updated successfully.',
           transactionId: trn_id,
       });
-
   } catch (error) {
       console.error('Error processing transaction:', error);
       res.status(500).json({ message: 'Internal server error.' });
   }
 });
-
 
 
 // GET /api/users/:usr_id/properties - Fetch properties specific to a user by usr_id

@@ -268,7 +268,6 @@ router.get('/statements/:propId',  async (req, res) => {
       const query = { bll_prop_id: property.prop_id }; // Match the correct ObjectId
       const statements = await dbClient.collection('statements').find(query).toArray();
 
-      console.log(statements)
       if (!statements.length) {
           return res.status(200).json({ statements: [] });
       }
@@ -635,102 +634,112 @@ const generateId = (prefix, uppercase = false) => {
 //     }
 // });
 
+
 router.post('/transactions/:propId', async (req, res) => {
-    try {
-        const { propId } = req.params;
-        const {
-            trn_type, // ["water charges", "HOA charges", "All"]
-            trn_user_init,
-            trn_created_at,
-            trn_purp,
-            trn_method,
-            trn_amount,
-            trn_image_url,
-            bill_id
-        } = req.body;
+  try {
+      const { propId } = req.params;
+      const {
+          trn_type,
+          trn_user_init,
+          trn_created_at,
+          trn_purp,
+          trn_method,
+          trn_amount,
+          trn_image_url,
+          bill_id
+      } = req.body;
 
-        if (!trn_type || !trn_purp || !trn_method || !trn_image_url || !bill_id) {
-            return res.status(400).json({ message: 'Missing required fields.' });
-        }
+      if (!trn_type || !trn_purp || !trn_method || !trn_image_url || !bill_id) {
+          return res.status(400).json({ message: 'Missing required fields.' });
+      }
 
-        if (trn_purp !== "All" && (trn_amount === undefined || isNaN(parseFloat(trn_amount)))) {
-            return res.status(400).json({ message: 'Invalid transaction amount.' });
-        }
+      if (trn_purp !== "All" && (trn_amount === undefined || isNaN(parseFloat(trn_amount)))) {
+          return res.status(400).json({ message: 'Invalid transaction amount.' });
+      }
 
-        const dbClient = getDb();
-        const bill = await dbClient.collection('statements').findOne({ bll_id: bill_id });
+      const dbClient = getDb();
+      const bill = await dbClient.collection('statements').findOne({ bll_id: bill_id });
 
-        if (!bill) {
-            return res.status(404).json({ message: 'Billing statement not found.' });
-        }
+      if (!bill) {
+          return res.status(404).json({ message: 'Billing statement not found.' });
+      }
 
-        // Generate transaction ID
-        const trn_id = generateId('CVT');
-        const paymentAmount = parseFloat(trn_amount);
+      const trn_id = generateId('CVT');
+      const paymentAmount = parseFloat(trn_amount);
 
-        // Update specific payment breakdown
-        let newPaidBreakdown = { ...bill.bll_paid_breakdown };
-        let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount; // ✅ Fix: Convert to number
+      let newPaidBreakdown = { ...bill.bll_paid_breakdown };
+      let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount;
 
-        if (trn_purp === "Water Bill") {
-            newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
-        } else if (trn_purp === "HOA Maintenance Fees") {
-            newPaidBreakdown.hoa = (bill.bll_paid_breakdown?.hoa || 0) + paymentAmount;
-        } else if (trn_purp === "Garbage") {
-            newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount; 
-        } else if (trn_purp === "All") {
-            newPaidBreakdown.water = bill.bll_water_charges;
-            newPaidBreakdown.hoa = bill.bll_hoamaint_fee;
-            newPaidBreakdown.garbage = bill.bll_garb_charges; 
-        }
+      if (trn_method === "E-Wallet") {
+          const eWallet = await dbClient.collection('wallet').findOne({ wall_owner: trn_user_init });
+          if (!eWallet) {
+              return res.status(400).json({ message: 'E-Wallet not found.' });
+          }
+          if (eWallet.wall_bal < paymentAmount) {
+              return res.status(400).json({ message: 'Insufficient E-Wallet balance.' });
+          }
 
-        // ✅ Fix: Ensure all charge types are fully paid
-        const isWaterPaid = newPaidBreakdown.water >= bill.bll_water_charges;
-        const isHoaPaid = newPaidBreakdown.hoa >= bill.bll_hoamaint_fee;
-        const isGarbagePaid = newPaidBreakdown.garbage >= bill.bll_garb_charges;
+          await dbClient.collection('wallet').updateOne(
+              { wall_owner: trn_user_init },
+              { $inc: { wall_bal: -paymentAmount } }
+          );
+      }
 
-        // ✅ Fix: Consider all charges before marking "paid"
-        const newPayStat = (isWaterPaid && isHoaPaid && isGarbagePaid) ? "paid" : "pending";
+      if (trn_purp === "Water Bill") {
+          newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
+      } else if (trn_purp === "HOA Maintenance Fees") {
+          newPaidBreakdown.hoa = (bill.bll_paid_breakdown?.hoa || 0) + paymentAmount;
+      } else if (trn_purp === "Garbage") {
+          newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount;
+      } else if (trn_purp === "All") {
+          newPaidBreakdown.water = bill.bll_water_charges;
+          newPaidBreakdown.hoa = bill.bll_hoamaint_fee;
+          newPaidBreakdown.garbage = bill.bll_garb_charges;
+      }
 
-        // Insert transaction
-        const transaction = {
-            trn_id,
-            trn_type,
-            trn_user_init,
-            trn_created_at: new Date(trn_created_at),
-            trn_purp,
-            trn_method,
-            trn_amount: paymentAmount,
-            trn_status: 'pending',
-            trn_image_url,
-            bill_id
-        };
+      const isWaterPaid = newPaidBreakdown.water >= bill.bll_water_charges;
+      const isHoaPaid = newPaidBreakdown.hoa >= bill.bll_hoamaint_fee;
+      const isGarbagePaid = newPaidBreakdown.garbage >= bill.bll_garb_charges;
 
-        await dbClient.collection('transactions').insertOne(transaction);
+      const newPayStat = (isWaterPaid && isHoaPaid && isGarbagePaid) ? "paid" : "pending";
 
-        // Update billing statement
-        await dbClient.collection('statements').updateOne(
-            { bll_id: bill_id }, // Find statement by bill ID
-            {
-                $set: {
-                    bll_total_paid: newTotalPaid.toFixed(2), // ✅ Fix: Store it as a properly formatted number string
-                    bll_pay_stat: newPayStat,
-                    bll_paid_breakdown: newPaidBreakdown
-                }
-            },
-            { upsert: true }
-        );
+      const transaction = {
+          trn_id,
+          trn_type,
+          trn_user_init,
+          trn_created_at: new Date(trn_created_at),
+          trn_purp,
+          trn_method,
+          trn_amount: paymentAmount,
+          trn_status: 'completed',
+          trn_image_url,
+          bill_id
+      };
 
-        res.status(201).json({
-            message: 'Transaction created and billing statement updated successfully.',
-            transactionId: trn_id,
-        });
+      await dbClient.collection('transactions').insertOne(transaction);
 
-    } catch (error) {
-        console.error('Error processing transaction:', error);
-        res.status(500).json({ message: 'Internal server error.' });
-    }
+      await dbClient.collection('statements').updateOne(
+          { bll_id: bill_id },
+          {
+              $set: {
+                  bll_total_paid: newTotalPaid.toFixed(2),
+                  bll_pay_stat: newPayStat,
+                  bll_paid_breakdown: newPaidBreakdown
+              }
+          },
+          { upsert: true }
+      );
+
+      res.status(201).json({
+          message: 'Transaction created and billing statement updated successfully.',
+          transactionId: trn_id,
+      });
+  } catch (error) {
+      console.error('Error processing transaction:', error);
+      res.status(500).json({ message: 'Internal server error.' });
+  }
 });
+
 
 
 
