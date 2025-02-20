@@ -47,7 +47,11 @@ router.put("/update-status/:id", async (req, res) => {
       .toArray();
 
     const totalAmountOfAllTransactions = transactions.reduce(
-      (val, t) => t.trn_amount + val,
+      (val, t) => { 
+        if (t.trn_status === "completed") return t.trn_amount + val
+
+        return t.trn_amount;
+      },
       0
     );
 
@@ -60,8 +64,9 @@ router.put("/update-status/:id", async (req, res) => {
         { $set: { transactions_status: "completed" } }
       );
 
+      const completedTransaction = transactions.find(t => t.trn_type === "Advanced Payment" && t.trn_status === "completed")
       // If it's an advanced payment, update wallets
-      if (transactions.length === 1 && transactions[0].trn_type === "Advanced Payment") {
+      if (transactions.length > 0 && completedTransaction.trn_type === "Advanced Payment") {
         const villWalletCollection = database.collection("villwallet");
         const walletCollection = database.collection("wallet");
 
@@ -83,7 +88,7 @@ router.put("/update-status/:id", async (req, res) => {
 
         await villWalletCollection.updateOne(
           { villwall_id: villageWallet.villwall_id },
-          { $inc: { villwall_tot_bal: exceedAmount } }
+          { $inc: { villwall_tot_bal: parseFloat(billingStatement.bll_total_amt_due) } }
         );
       }
     }
