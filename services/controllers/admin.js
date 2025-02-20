@@ -507,6 +507,14 @@ router.post('/transactions/:propId', async (req, res) => {
               { wall_owner: trn_user_init },
               { $inc: { wall_bal: -paymentAmount } }
           );
+
+          const villWalletCollection = dbClient.collection("villwallet");
+
+          const villageWallet = await villWalletCollection.findOne();
+          await villWalletCollection.updateOne(
+            { villwall_id: villageWallet.villwall_id },
+            { $inc: { villwall_tot_bal: parseFloat(paymentAmount) } }
+          );
       }
 
       if (trn_purp === "Water Bill") {
@@ -525,7 +533,7 @@ router.post('/transactions/:propId', async (req, res) => {
       const isHoaPaid = newPaidBreakdown.hoa >= bill.bll_hoamaint_fee;
       const isGarbagePaid = newPaidBreakdown.garbage >= bill.bll_garb_charges;
 
-      const newPayStat = (isWaterPaid && isHoaPaid && isGarbagePaid) ? "paid" : "pending";
+      const newPayStat = ((isWaterPaid && isHoaPaid && isGarbagePaid) && parseFloat(newTotalPaid) >= parseFloat(bill.bll_total_amt_due)) ? "paid" : "pending";
 
       const transaction = {
           trn_id,
@@ -536,6 +544,7 @@ router.post('/transactions/:propId', async (req, res) => {
           trn_method,
           trn_amount: paymentAmount,
           trn_status: 'completed',
+          
           trn_image_url,
           bill_id
       };
@@ -548,12 +557,14 @@ router.post('/transactions/:propId', async (req, res) => {
               $set: {
                   bll_total_paid: newTotalPaid.toFixed(2),
                   bll_pay_stat: newPayStat,
-                  bll_paid_breakdown: newPaidBreakdown
+                  bll_paid_breakdown: newPaidBreakdown,
+                  transactions_status: newPayStat == "paid" ? "completed" : "pending"
               }
           },
           { upsert: true }
       );
 
+    
       res.status(201).json({
           message: 'Transaction created and billing statement updated successfully.',
           transactionId: trn_id,
