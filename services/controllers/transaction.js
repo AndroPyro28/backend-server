@@ -73,8 +73,8 @@ router.put("/update-status/:id", async (req, res) => {
 
         const homeOwnerWallet = await walletCollection.findOne({ wall_owner: transaction.trn_user_init });
 
-        if (!homeOwnerWallet || !villageWallet) {
-          console.error("Wallet(s) not found for update.");
+        if (!homeOwnerWallet) {
+          console.error("Wallet not found for update.");
           return res.status(400).json({ error: "Wallet(s) not found." });
         }
 
