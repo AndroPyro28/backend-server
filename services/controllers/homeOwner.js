@@ -487,6 +487,54 @@ router.put("/profile/:userId", async (req, res) => {
     }
   });
 
+  router.put("/profile/:userId/password", async (req, res) => {
+    const { userId } = req.params;
+    const {
+      new_password,
+    } = req.body;
+    try {
+      const dbClient = getDb();
+  
+      if (!new_password) {
+        return res.status(400).json({ message: "Password is required" });
+      }
+
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      
+      const hashPwd = await bcrypt.hash(new_password, 16);
+
+      let updateField = {
+        usr_password: hashPwd,
+      };
+  
+      const userExist = await dbClient
+        .collection("users")
+        .findOne({ usr_id: userId });
+  
+      if (!userExist || userExist.usr_role != "homeowner") {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      const result = await dbClient.collection("users").updateOne(
+        { usr_id: userId },
+        {
+          $set: updateField,
+        }
+      );
+      
+      if (result.matchedCount === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      return res.json({ message: "Profile updated successfully" });
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
 
 
 // Utility function to generate a unique 10-character ID
