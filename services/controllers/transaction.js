@@ -63,6 +63,7 @@ router.put("/update-status/:id", async (req, res) => {
         { bll_id: billingStatement.bll_id },
         { $set: { transactions_status: "completed" } }
       );
+      const villageWallet = await villWalletCollection.findOne();
 
       const completedTransaction = transactions.find(t => t.trn_type === "Advanced Payment" && t.trn_status === "completed")
       // If it's an advanced payment, update wallets
@@ -70,7 +71,6 @@ router.put("/update-status/:id", async (req, res) => {
         const villWalletCollection = database.collection("villwallet");
         const walletCollection = database.collection("wallet");
 
-        const villageWallet = await villWalletCollection.findOne();
         const homeOwnerWallet = await walletCollection.findOne({ wall_owner: transaction.trn_user_init });
 
         if (!homeOwnerWallet || !villageWallet) {
@@ -93,7 +93,7 @@ router.put("/update-status/:id", async (req, res) => {
         { villwall_id: villageWallet.villwall_id },
         { $inc: { villwall_tot_bal: parseFloat(billingStatement.bll_total_amt_due) } }
       );
-      
+
     }
 
     return res.status(200).json({ result });
