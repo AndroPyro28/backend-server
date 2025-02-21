@@ -469,11 +469,11 @@ router.post('/transactions/:propId', async (req, res) => {
           trn_purp,
           trn_method,
           trn_amount,
-          trn_image_url,
+          trn_image_url="",
           bill_id
       } = req.body;
 
-      if (!trn_type || !trn_purp || !trn_method || !trn_image_url || !bill_id) {
+      if (!trn_type || !trn_purp || !trn_method || !bill_id) {
           return res.status(400).json({ message: 'Missing required fields.' });
       }
 
@@ -544,7 +544,6 @@ router.post('/transactions/:propId', async (req, res) => {
           trn_method,
           trn_amount: paymentAmount,
           trn_status: 'completed',
-          
           trn_image_url,
           bill_id
       };
@@ -966,6 +965,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
     bll_water_cons_img,
     otherColl,
     totalBill,
+    imageUrl
   } = req.body;
 
   const timestamp = new Date(); // Get the current date and time
@@ -1013,16 +1013,6 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
     const sortableBillPeriod = `${year}-${monthMapping[month.toLowerCase()]}`; // Format as YYYY-MM
     const parsedBillPeriodDate = new Date(`${sortableBillPeriod}-01T00:00:00Z`); // Parse as a Date
 
-    // Compress and upload the image
-    let imageUrl = null;
-    if (bll_water_cons_img) {
-      imageUrl = await compressAndUploadBillImage(
-        bll_water_cons_img,
-        bll_id,
-        timestamp
-      );
-    }
-
     // Safely parse values and use defaults for undefined fields
     const newBillingStatement = {
       bll_id,
@@ -1048,7 +1038,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
       bll_other_coll: formattedOtherColl,
       bll_total_paid: Decimal128.fromString("0.00"),
       bll_total_amt_due: Decimal128.fromString((totalBill || 0).toFixed(2)),
-      transactions_status:"pending"
+      transactions_status:"pending",
     };
 
     // Insert the new billing statement into the database
