@@ -393,6 +393,7 @@ router.get("/transaction/:userId", async (req, res) => {
       purpose: trn.trn_purp || "N/A",
       paymentMethod: trn.trn_method || "N/A",
       paymentAmount: trn.trn_amount || 0,
+      reason: trn?.trn_reason || "",
     }));
 
     res.status(200).json(formattedTransactions);
@@ -683,7 +684,7 @@ router.post("/transactions/:propId", async (req, res) => {
       bill_id,
     } = req.body;
 
-    if (!trn_type || !trn_purp || !trn_method || !trn_image_url || !bill_id) {
+    if (!trn_type || !trn_purp || !trn_method || !bill_id) {
       return res.status(400).json({ message: "Missing required fields." });
     }
 
@@ -708,6 +709,7 @@ router.post("/transactions/:propId", async (req, res) => {
 
     let newPaidBreakdown = { ...bill.bll_paid_breakdown };
     let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount;
+    console.log("wallet not found")
 
     if (trn_method === "E-Wallet") {
       const eWallet = await dbClient
@@ -739,19 +741,32 @@ router.post("/transactions/:propId", async (req, res) => {
     }
 
     if (trn_purp === "Water Bill") {
-      newPaidBreakdown.water =
-        (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
-    } else if (trn_purp === "HOA Maintenance Fees") {
-      newPaidBreakdown.hoa =
-        (bill.bll_paid_breakdown?.hoa || 0) + paymentAmount;
-    } else if (trn_purp === "Garbage") {
-      newPaidBreakdown.garbage =
-        (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount;
-    } else if (trn_purp === "All") {
-      newPaidBreakdown.water = bill.bll_water_charges;
-      newPaidBreakdown.hoa = bill.bll_hoamaint_fee;
-      newPaidBreakdown.garbage = bill.bll_garb_charges;
-    }
+      newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
+      } else if (trn_purp === "HOA Maintenance Fees") {
+          newPaidBreakdown.hoa = (bill.bll_paid_breakdown?.hoa || 0) + paymentAmount;
+      } else if (trn_purp === "Garbage") {
+          newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + paymentAmount;
+      } else if (trn_purp === "All") {
+      // Get total remaining balance per category
+      const remainingWater = bill.bll_water_charges - (bill.bll_paid_breakdown?.water || 0);
+      const remainingHOA = bill.bll_hoamaint_fee - (bill.bll_paid_breakdown?.hoa || 0);
+      const remainingGarbage = bill.bll_garb_charges - (bill.bll_paid_breakdown?.garbage || 0);
+  
+      // Calculate total remaining balance
+      const totalRemaining = remainingWater + remainingHOA + remainingGarbage;
+  
+      if (totalRemaining > 0) {
+          // Calculate proportional payments
+          const waterShare = parseFloat((remainingWater / totalRemaining) * paymentAmount).toFixed(2);
+          const hoaShare = parseFloat((remainingHOA / totalRemaining) * paymentAmount).toFixed(2);
+          const garbageShare = parseFloat((remainingGarbage / totalRemaining) * paymentAmount).toFixed(2);
+  
+          // Add to existing payments, ensuring no overpayment
+          newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + Math.min(waterShare, remainingWater);
+          newPaidBreakdown.hoa = (bill.bll_paid_breakdown?.hoa || 0) + Math.min(hoaShare, remainingHOA);
+          newPaidBreakdown.garbage = (bill.bll_paid_breakdown?.garbage || 0) + Math.min(garbageShare, remainingGarbage);
+      }
+  }
 
     const isWaterPaid = newPaidBreakdown.water >= bill.bll_water_charges;
     const isHoaPaid = newPaidBreakdown.hoa >= bill.bll_hoamaint_fee;
