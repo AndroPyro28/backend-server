@@ -1080,8 +1080,9 @@ router.get("/properties/:prop_id/statements", async (req, res) => {
     .sort({ bll_bill_cov_period_date: -1 }) // Sort by creation date in descending order
     .toArray(); // Convert to an array
     
+    const data = convertDecimal128FieldsToString(JSON.parse(JSON.stringify(statements)))
     // Return an empty array if no billing statements are found
-    res.status(200).json(statements || []);
+    res.status(200).json(data || []);
   } catch (err) {
     console.error("Error fetching billing statements:", err);
     res.status(500).json({ error: "Internal server error" });
