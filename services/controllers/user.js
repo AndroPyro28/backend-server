@@ -33,6 +33,29 @@ router.get('/', async (req, res) => {
     }
   });
 
+
+  router.get('/:userId', async (req, res) => {
+    const { userId } = req.params;
+    
+    try {
+      const database = getDb();
+      const usersCollection = database.collection('users');
+      const query = { usr_id: userId }
+      // Find the user by username
+      let user = await usersCollection.findOne(query);
+    
+      if (!user) {
+        return res.status(400).json({ error: 'No user found' });
+    }
+
+      // If valid, return the user object with relevant fields
+      res.status(200).json(user);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
   router.get('/:userId/wallet', async (req, res) => {
     const { userId } = req.params;
     

@@ -1281,12 +1281,15 @@ router.get("/wallet", async (req, res) => {
   try {
     const database = getDb(); // Get the database instance
     const walletCollection = database.collection("villwallet"); // Access the 'wallet' collection
+    const userCollection = database.collection("users"); // Access the 'wallet' collection
     const wallet = await walletCollection.find({}).toArray(); // Fetch all wallet from the collection
 
     const data = JSON.parse(JSON.stringify(wallet[0]));
     // Convert all Decimal128 fields to strings, including nested ones
     const walletResponse = convertDecimal128FieldsToString(data);
-    console.log(walletResponse);
+    console.log(walletResponse)
+    // const user = await userCollection.findOne({usr_id: walletResponse}); // Fetch all wallet from the collection
+
     res.status(200).json(walletResponse);
   } catch (err) {
     console.error("[SERVER] Error fetching data:", err);
@@ -1298,7 +1301,7 @@ router.get("/wallet/:villwall_trn_id", async (req, res) => {});
 
 // POST /wallet/spend
 router.post("/wallet/spend", async (req, res) => {
-  const { _id, amount } = req.body; // Ensure _id is included in the request
+  const { _id, amount, description, userId } = req.body; // Ensure _id is included in the request
   const vw_id = "CVVW000001";
 
   try {
@@ -1306,6 +1309,9 @@ router.post("/wallet/spend", async (req, res) => {
       return res.status(400).json({ error: "Amount must be a numeric value" });
     }
 
+    if (!description) {
+      return res.status(400).json({ error: "Description is required" });
+    }
     const database = getDb();
     const walletCollection = database.collection("villwallet");
 
@@ -1326,7 +1332,7 @@ router.post("/wallet/spend", async (req, res) => {
     let transactionExists;
     do {
       transactionID = "CVVWT" + Math.random().toString(36).substring(2, 12);
-      transactionExists = wallet.villwall_trn_hist.some(
+      transactionExists = wallet?.villwall_trn_hist?.some(
         (trn) => trn.villwall_trn_id === transactionID
       );
     } while (transactionExists);
@@ -1337,7 +1343,8 @@ router.post("/wallet/spend", async (req, res) => {
       villwall_trn_type: "expense",
       villwall_trn_created_at: new Date(),
       villwall_trn_amt: parseFloat(amount), // Ensure amount is a float
-      villwall_trn_link: _id || "admin",
+      villwall_trn_link: userId || "admin",
+      villwall_trn_description: description
     };
 
     // Update the wallet
@@ -1363,13 +1370,18 @@ router.post("/wallet/spend", async (req, res) => {
 
 // POST /wallet/deposit
 router.post("/wallet/deposit", async (req, res) => {
-  const { _id, amount } = req.body;
+  const { _id, amount, description, userId } = req.body;
   const vw_id = "CVVW000001";
 
   try {
     if (!amount || isNaN(amount)) {
       return res.status(400).json({ error: "Amount must be a numeric value" });
     }
+
+    if (!description) {
+      return res.status(400).json({ error: "Description is required" });
+    }
+
 
     const database = getDb();
     const walletCollection = database.collection("villwallet");
@@ -1386,7 +1398,7 @@ router.post("/wallet/deposit", async (req, res) => {
     let transactionExists;
     do {
       transactionID = "CVVWT" + Math.random().toString(36).substring(2, 12);
-      transactionExists = wallet.villwall_trn_hist.some(
+      transactionExists = wallet?.villwall_trn_hist?.some(
         (trn) => trn.villwall_trn_id === transactionID
       );
     } while (transactionExists);
@@ -1397,7 +1409,8 @@ router.post("/wallet/deposit", async (req, res) => {
       villwall_trn_type: "collect",
       villwall_trn_created_at: new Date(),
       villwall_trn_amt: parseFloat(amount), // Ensure amount is a float
-      villwall_trn_link: _id || "admin",
+      villwall_trn_link: userId || "admin",
+      villwall_trn_description: description
     };
 
     // Update the wallet
