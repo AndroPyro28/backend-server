@@ -6,6 +6,14 @@ import { ObjectId, Decimal128 } from "mongodb";
 import { getDb } from "../db/db.js";
 import "dotenv/config"; // Lo
 const router = express.Router();
+import handlebars from "handlebars"
+import moment from "moment-timezone";
+import sendMail from "../../lib/smtp.js"
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 router.put("/update-status/:id", async (req, res) => {
   const { id } = req.params;
@@ -18,11 +26,19 @@ router.put("/update-status/:id", async (req, res) => {
 
     const transactionCollection = database.collection("transactions");
     const billingCollection = database.collection("statements");
+    const userCollection = database.collection("users");
 
     const transaction = await transactionCollection.findOne({ trn_id: id });
 
     if (!transaction || !transaction._id) {
       console.error("Transaction not found:", id);
+      return res.status(404).json({ error: "Transaction not found." });
+    }
+
+    const user = await userCollection.findOne({ usr_id: transaction?.trn_user_init });
+
+    if (!user || !user._id) {
+      console.error("User not found:", id);
       return res.status(404).json({ error: "Transaction not found." });
     }
 
@@ -41,6 +57,22 @@ router.put("/update-status/:id", async (req, res) => {
       { upsert: true }
     );
 
+    if(status === "completed") {
+      const formattedDate = `${new Date().getFullYear()}-${(new Date().getMonth() + 1)}-${new Date().getDate()}`;
+      
+      const source = fs.readFileSync(`${__dirname}/../../public/template/transaction-approved.html`, 'utf-8').toString()
+          const template = handlebars.compile(source)
+          const replacement = {
+            date: formattedDate,
+            concern: "Transaction Completed",
+            amount: transaction?.trn_amount,
+            payment_method: transaction?.trn_method,
+            purpose: transaction?.trn_purp,
+            type: transaction?.trn_type
+          }
+          const reminderContent = template(replacement);
+          sendMail({ content:reminderContent, subject: "Transaction Completed", emailTo: user.usr_email });
+    }
     // Check if all transactions for the bill have been paid
     const transactions = await transactionCollection
       .find({ bill_id: billingStatement.bll_id })
