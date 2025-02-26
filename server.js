@@ -53,7 +53,9 @@ const startServer = async () => {
     };
     app.use(express.static(path.join(__dirname, "public")));
     app.set('trust proxy', true);
-    app.use(cors());
+    app.use(cors({
+      origin: "*"
+    }));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
