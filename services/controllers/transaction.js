@@ -133,6 +133,16 @@ router.put("/update-status/:id", async (req, res) => {
       { upsert: true }
     );
     }
+    if(status === "rejected") {
+      const source = fs.readFileSync(`${__dirname}/../../public/template/transaction-rejected.html`, 'utf-8').toString()
+      const template = handlebars.compile(source)
+      const replacement = {
+        id: transaction?.trn_id,
+        reason,
+      }
+      const reminderContent = template(replacement);
+      sendMail({ content:reminderContent, subject: "Transaction Rejected", emailTo: user.usr_email });
+    }
     // Check if all transactions for the bill have been paid
     const transactions = await transactionCollection
       .find({ bill_id: billingStatement.bll_id })

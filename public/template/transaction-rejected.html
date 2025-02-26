@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaction Completed</title>
+  <style>
+    /* Reset styles */
+    body, html {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      background-color: #f3f3f3; /* Light grey background */
+    }
+    /* Main content styles */
+    .container {
+      width: 100%;
+      margin: 0 auto;
+      max-width: 600px;
+      padding: 20px;
+      background-color: #fff; /* White background */
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      text-align: center;
+      color: black; /* Orange color */
+    }
+    .appointment-details {
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ccc; /* Light grey border */
+      padding-bottom: 20px;
+    }
+    .appointment-details p {
+      margin: 5px 0;
+    }
+   
+    /* Footer styles */
+    footer {
+      width: 100%;
+      margin: 0 auto;
+      text-align: center;
+      padding: 20px 0;
+      max-width: 640px;
+      background-color: #2B2D42; /* Green color */
+      border-radius: 0 0 10px 10px;
+    }
+    footer p {
+      margin: 0;
+      font-size: 14px;
+      color:white; /* White color */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <h1>Payment Rejected</h1>
+    <div class="appointment-details">
+      <h2>Your transaction # {{id}} has been rejected.</h2>
+      <p><strong>Reason:</strong> {{reason}}</p>
+    </div>
+    <p>Thank you! <br/>CV Connect Admin</p>
+  </div>
+  <footer>
+    <p>&copy; 2025 CV Connect. All rights reserved.</p>
+  </footer>
+</body>
+</html>
