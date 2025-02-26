@@ -5,10 +5,16 @@ import fs from "fs";
 import tinify from "tinify";
 import { ObjectId, Decimal128 } from "mongodb";
 import "dotenv/config"; // Load environment variables
+import handlebars from "handlebars"
 
 import { getDb } from "../db/db.js"; // Import the db module
 import { sendWelcomeEmail } from "../welcomeEmail.js"; // Import sendWelcomeEmail from emailService
+import sendMail from "../../lib/smtp.js"
+import { dirname } from "path";
+import { fileURLToPath } from "url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const router = express.Router();
 
 tinify.key = process.env.TINIFY_API_KEY;
@@ -301,14 +307,26 @@ router.post("/create_account", async (req, res) => {
     });
 
     // Send the welcome email to the new user's email address
-    await sendWelcomeEmail(
-      email,
-      generatedOtp,
-      first_name,
-      last_name,
-      username,
-      password
-    );
+    // await sendWelcomeEmail(
+    //   email,
+    //   generatedOtp,
+    //   first_name,
+    //   last_name,
+    //   username,
+    //   password
+    // );
+
+    const source = fs.readFileSync(`${__dirname}/../../public/template/welcome.html`, 'utf-8').toString()
+          const template = handlebars.compile(source)
+          const replacement = {
+            firstName: first_name,
+            lastName: last_name,
+            username: "Transaction Completed",
+            password,
+            otp: generatedOtp,
+          }
+          const reminderContent = template(replacement);
+          sendMail({ content:reminderContent, subject: "Welcome", emailTo: email});
 
     res.status(200).json({ message: "Account created successfully" });
   } catch (err) {
