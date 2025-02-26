@@ -72,6 +72,66 @@ router.put("/update-status/:id", async (req, res) => {
           }
           const reminderContent = template(replacement);
           sendMail({ content:reminderContent, subject: "Transaction Completed", emailTo: user.usr_email });
+
+          let newPaidBreakdown = { ...billingStatement.bll_paid_breakdown };
+          let newTotalPaid = (parseFloat(billingStatement.bll_total_paid) || 0) + transaction?.trn_amount;
+          if (transaction?.trn_purp === "Water Bill") {
+            newPaidBreakdown.water = (billingStatement.bll_paid_breakdown?.water || 0) + transaction?.trn_amount;
+            } else if (transaction?.trn_purp === "HOA Maintenance Fees") {
+                newPaidBreakdown.hoa = (billingStatement.bll_paid_breakdown?.hoa || 0) + transaction?.trn_amount;
+            } else if (transaction?.trn_purp === "Garbage") {
+                newPaidBreakdown.garbage = (billingStatement.bll_paid_breakdown?.garbage || 0) + transaction?.trn_amount;
+            } else if (transaction?.trn_purp === "All") {
+            // Get total remaining balance per category
+            const remainingWater = billingStatement.bll_water_charges - (billingStatement.bll_paid_breakdown?.water || 0);
+            const remainingHOA = billingStatement.bll_hoamaint_fee - (billingStatement.bll_paid_breakdown?.hoa || 0);
+            const remainingGarbage = billingStatement.bll_garb_charges - (billingStatement.bll_paid_breakdown?.garbage || 0);
+        
+            // Calculate total remaining balance
+            const totalRemaining = remainingWater + remainingHOA + remainingGarbage;
+        
+            if (totalRemaining > 0) {
+                // Calculate proportional payments
+                const waterShare = parseFloat((remainingWater / totalRemaining) * transaction?.trn_amount).toFixed(2);
+                const hoaShare = parseFloat((remainingHOA / totalRemaining) * transaction?.trn_amount).toFixed(2);
+                const garbageShare = parseFloat((remainingGarbage / totalRemaining) * transaction?.trn_amount).toFixed(2);
+        
+                // Add to existing payments, ensuring no overpayment
+                newPaidBreakdown.water = (billingStatement.bll_paid_breakdown?.water || 0) + Math.min(waterShare, remainingWater);
+                newPaidBreakdown.hoa = (billingStatement.bll_paid_breakdown?.hoa || 0) + Math.min(hoaShare, remainingHOA);
+                newPaidBreakdown.garbage = (billingStatement.bll_paid_breakdown?.garbage || 0) + Math.min(garbageShare, remainingGarbage);
+            }
+        }
+      
+          const isWaterPaid = newPaidBreakdown.water >= billingStatement.bll_water_charges;
+          const isHoaPaid = newPaidBreakdown.hoa >= billingStatement.bll_hoamaint_fee;
+          const isGarbagePaid = newPaidBreakdown.garbage >= billingStatement.bll_garb_charges;
+      
+          const newPayStat =
+            isWaterPaid &&
+            isHoaPaid &&
+            isGarbagePaid &&
+            newTotalPaid >= parseFloat(billingStatement.bll_total_amt_due)
+              ? "paid"
+              : "pending";
+      
+    await billingCollection.updateOne(
+      { bll_id: billingStatement.bll_id },
+      {
+        $set: {
+          bll_total_paid: newTotalPaid.toFixed(2),
+          bll_pay_stat: newPayStat,
+          bll_paid_breakdown: newPaidBreakdown,
+          transactions_status:
+           (( newPayStat == "paid") &&
+           ( totalAmountOfAllTransactions >= bill.bll_total_paid &&
+            totalAmountOfAllTransactions >= bill.bll_total_amt_due))
+              ? "completed"
+              : "pending",
+        },
+      },
+      { upsert: true }
+    );
     }
     // Check if all transactions for the bill have been paid
     const transactions = await transactionCollection
@@ -118,12 +178,6 @@ router.put("/update-status/:id", async (req, res) => {
           { $inc: { wall_bal: exceedAmount } }
         );
       }
-
-      await villWalletCollection.updateOne(
-        { villwall_id: villageWallet.villwall_id },
-        { $inc: { villwall_tot_bal: parseFloat(billingStatement.bll_total_amt_due) } }
-      );
-
     }
 
     return res.status(200).json({ result });

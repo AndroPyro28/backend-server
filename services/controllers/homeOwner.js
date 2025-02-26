@@ -711,35 +711,6 @@ router.post("/transactions/:propId", async (req, res) => {
     let newTotalPaid = (parseFloat(bill.bll_total_paid) || 0) + paymentAmount;
     console.log("wallet not found")
 
-    if (trn_method === "E-Wallet") {
-      const eWallet = await dbClient
-        .collection("wallet")
-        .findOne({ wall_owner: trn_user_init });
-      if (!eWallet) {
-        return res.status(400).json({ message: "E-Wallet not found." });
-      }
-      if (eWallet.wall_bal < paymentAmount) {
-        return res
-          .status(400)
-          .json({ message: "Insufficient E-Wallet balance." });
-      }
-
-      await dbClient
-        .collection("wallet")
-        .updateOne(
-          { wall_owner: trn_user_init },
-          { $inc: { wall_bal: -paymentAmount } }
-        );
-
-      const villWalletCollection = dbClient.collection("villwallet");
-
-      const villageWallet = await villWalletCollection.findOne();
-      await villWalletCollection.updateOne(
-        { villwall_id: villageWallet.villwall_id },
-        { $inc: { villwall_tot_bal: parseFloat(paymentAmount) } }
-      );
-    }
-
     if (trn_purp === "Water Bill") {
       newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
       } else if (trn_purp === "HOA Maintenance Fees") {
@@ -779,6 +750,57 @@ router.post("/transactions/:propId", async (req, res) => {
       newTotalPaid >= parseFloat(bill.bll_total_amt_due)
         ? "paid"
         : "pending";
+        
+
+    if (trn_method === "E-Wallet") {
+      const eWallet = await dbClient
+        .collection("wallet")
+        .findOne({ wall_owner: trn_user_init });
+      if (!eWallet) {
+        return res.status(400).json({ message: "E-Wallet not found." });
+      }
+      if (eWallet.wall_bal < paymentAmount) {
+        return res
+          .status(400)
+          .json({ message: "Insufficient E-Wallet balance." });
+      }
+
+      await dbClient
+        .collection("wallet")
+        .updateOne(
+          { wall_owner: trn_user_init },
+          { $inc: { wall_bal: -paymentAmount } }
+        );
+
+      const villWalletCollection = dbClient.collection("villwallet");
+
+      const villageWallet = await villWalletCollection.findOne();
+      await villWalletCollection.updateOne(
+        { villwall_id: villageWallet.villwall_id },
+        { $inc: { villwall_tot_bal: parseFloat(paymentAmount) } }
+      );
+
+      await dbClient.collection("statements").updateOne(
+        { bll_id: bill_id },
+        {
+          $set: {
+            bll_total_paid: newTotalPaid.toFixed(2),
+            bll_pay_stat: newPayStat,
+            bll_paid_breakdown: newPaidBreakdown,
+            transactions_status:
+             (( newPayStat == "paid") &&
+             ( totalAmountOfAllTransactions >= bill.bll_total_paid &&
+              totalAmountOfAllTransactions >= bill.bll_total_amt_due))
+                ? "completed"
+                : "pending",
+          },
+        },
+        { upsert: true }
+      );
+
+    }
+
+    
 
     const transaction = {
       trn_id,
@@ -805,23 +827,7 @@ router.post("/transactions/:propId", async (req, res) => {
       return val;
     }, 0);
 
-    await dbClient.collection("statements").updateOne(
-      { bll_id: bill_id },
-      {
-        $set: {
-          bll_total_paid: newTotalPaid.toFixed(2),
-          bll_pay_stat: newPayStat,
-          bll_paid_breakdown: newPaidBreakdown,
-          transactions_status:
-           (( newPayStat == "paid") &&
-           ( totalAmountOfAllTransactions >= bill.bll_total_paid &&
-            totalAmountOfAllTransactions >= bill.bll_total_amt_due))
-              ? "completed"
-              : "pending",
-        },
-      },
-      { upsert: true }
-    );
+    
 
     res.status(201).json({
       message:

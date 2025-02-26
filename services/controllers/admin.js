@@ -508,14 +508,16 @@ router.post('/transactions/:propId', async (req, res) => {
               { $inc: { wall_bal: -paymentAmount } }
           );
 
-          const villWalletCollection = dbClient.collection("villwallet");
+          
+      }
 
-          const villageWallet = await villWalletCollection.findOne();
-          await villWalletCollection.updateOne(
-            { villwall_id: villageWallet.villwall_id },
+      const villWalletCollection = dbClient.collection("villwallet");
+
+      const villageWallet = await villWalletCollection.findOne();
+      await villWalletCollection.updateOne(
+        { villwall_id: villageWallet.villwall_id },
             { $inc: { villwall_tot_bal: parseFloat(paymentAmount) } }
           );
-      }
 
         if (trn_purp === "Water Bill") {
         newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
