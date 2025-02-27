@@ -1078,6 +1078,9 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
     };
     // billing send email
 
+    const prop = await database.collection("properties").findOne({prop_id: property.prop_id })
+    const user = await database.collection("users").findOne({usr_id: prop.prop_owner_id })
+
     const source = fs.readFileSync(`${__dirname}/../../public/template/billing-statement.html`, 'utf-8').toString()
           const template = handlebars.compile(source)
           const replacement = {
@@ -1086,7 +1089,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
             date_coverage: sortableBillPeriod,
           }
           const reminderContent = template(replacement);
-          sendMail({ content:reminderContent, subject: "Welcome", emailTo: email});
+          sendMail({ content:reminderContent, subject: "Welcome", emailTo: user?.usr_email});
 
     // Insert the new billing statement into the database
     await billingStatementsCollection.insertOne(newBillingStatement);
