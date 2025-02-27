@@ -132,6 +132,12 @@ router.put("/update-status/:id", async (req, res) => {
       },
       { upsert: true }
     );
+    const villWalletCollection = database.collection("villwallet");
+    const villageWallet = await villWalletCollection.findOne();
+    await villWalletCollection.updateOne(
+      { villwall_id: villageWallet.villwall_id },
+          { $inc: { villwall_tot_bal: parseFloat(transaction?.trn_amount) } }
+        );
     }
     if(status === "rejected") {
       const source = fs.readFileSync(`${__dirname}/../../public/template/transaction-rejected.html`, 'utf-8').toString()
@@ -165,8 +171,6 @@ router.put("/update-status/:id", async (req, res) => {
         { bll_id: billingStatement.bll_id },
         { $set: { transactions_status: "completed" } }
       );
-      const villWalletCollection = database.collection("villwallet");
-      const villageWallet = await villWalletCollection.findOne();
 
       const completedTransaction = transactions.find(t => t.trn_type === "Advanced Payment" && t.trn_status === "completed")
       // If it's an advanced payment, update wallets
