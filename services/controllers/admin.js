@@ -321,7 +321,7 @@ router.post("/create_account", async (req, res) => {
           const replacement = {
             firstName: first_name,
             lastName: last_name,
-            username: "Transaction Completed",
+            username,
             password,
             otp: generatedOtp,
           }
