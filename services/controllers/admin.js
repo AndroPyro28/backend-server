@@ -1076,6 +1076,17 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
       bll_total_amt_due: Decimal128.fromString((totalBill || 0).toFixed(2)),
       transactions_status:"pending",
     };
+    // billing send email
+
+    const source = fs.readFileSync(`${__dirname}/../../public/template/billing-statement.html`, 'utf-8').toString()
+          const template = handlebars.compile(source)
+          const replacement = {
+            id: bll_id,
+            amount: Decimal128.fromString((totalBill || 0).toFixed(2)),
+            date_coverage: sortableBillPeriod,
+          }
+          const reminderContent = template(replacement);
+          sendMail({ content:reminderContent, subject: "Welcome", emailTo: email});
 
     // Insert the new billing statement into the database
     await billingStatementsCollection.insertOne(newBillingStatement);
