@@ -57,6 +57,19 @@ router.put("/update-status/:id", async (req, res) => {
       { upsert: true }
     );
 
+    const transactions = await transactionCollection
+      .find({ bill_id: billingStatement.bll_id })
+      .toArray();
+
+    const totalAmountOfAllTransactions = transactions.reduce(
+      (val, t) => { 
+        if (t.trn_status === "completed") return t.trn_amount + val
+
+        return val;
+      },
+      0
+    );
+
     if(status === "completed") {
       const formattedDate = `${new Date().getFullYear()}-${(new Date().getMonth() + 1)}-${new Date().getDate()}`;
       
@@ -150,18 +163,7 @@ router.put("/update-status/:id", async (req, res) => {
       sendMail({ content:reminderContent, subject: "Transaction Rejected", emailTo: user.usr_email });
     }
     // Check if all transactions for the bill have been paid
-    const transactions = await transactionCollection
-      .find({ bill_id: billingStatement.bll_id })
-      .toArray();
-
-    const totalAmountOfAllTransactions = transactions.reduce(
-      (val, t) => { 
-        if (t.trn_status === "completed") return t.trn_amount + val
-
-        return val;
-      },
-      0
-    );
+    
 
     if (
       totalAmountOfAllTransactions >= billingStatement.bll_total_paid &&
