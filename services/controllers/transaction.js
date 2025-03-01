@@ -137,8 +137,8 @@ router.put("/update-status/:id", async (req, res) => {
           bll_paid_breakdown: newPaidBreakdown,
           transactions_status:
            (( newPayStat == "paid") &&
-           ( totalAmountOfAllTransactions >= bill.bll_total_paid &&
-            totalAmountOfAllTransactions >= bill.bll_total_amt_due))
+           ( totalAmountOfAllTransactions >= billingStatement.bll_total_paid &&
+            totalAmountOfAllTransactions >= billingStatement.bll_total_amt_due))
               ? "completed"
               : "pending",
         },
