@@ -1709,6 +1709,7 @@ router.get("/dashboard", async (req, res) => {
     }
 
     const transactionsCollection = database.collection("transactions");
+    const villageWalletCollection = database.collection("villwallet");
 
     // Get the first and last day of the current month
     const now = new Date();
@@ -1727,6 +1728,30 @@ router.get("/dashboard", async (req, res) => {
       .find({ trn_created_at: { $gte: firstDay, $lte: lastDay } })
       .toArray();
 
+      const villWallet = await villageWalletCollection.findOne();
+
+      const getTotalCollectionsForCurrentMonth = (transactions) => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getUTCMonth();
+        
+        return transactions
+          .filter(
+            (trn) =>
+              trn.villwall_trn_type === "collect" &&
+              trn.villwall_trn_created_at.getFullYear() === currentYear &&
+              trn.villwall_trn_created_at.getMonth() === currentMonth
+          )
+          .reduce((total, trn) => total + trn.villwall_trn_amt, 0);
+      };
+
+      const totalWalletCollectionsThisMonth = getTotalCollectionsForCurrentMonth(villWallet?.villwall_trn_hist || [])
+      const transactionCollection = database.collection("transactions");
+
+      const pendingTransactions = await transactionCollection
+      .find({ trn_status: "pending" })
+      .toArray();
+
     // Calculate totals
     const totalCollection = transactions.reduce(
       (acc, transaction) => {
@@ -1734,13 +1759,20 @@ router.get("/dashboard", async (req, res) => {
           acc.pending += transaction.trn_amount || 0;
         } else if (transaction.trn_status === "completed") {
           acc.completed += transaction.trn_amount || 0;
+
+          if( transaction.trn_purp === "HOA Maintenance Fees") {
+            acc.hoa += transaction.trn_amount || 0
+          }
+          if( transaction.trn_purp === "Water Bill") {
+            acc.water += transaction.trn_amount || 0
+          }
         }
         return acc;
       },
-      { completed: 0, pending: 0 }
+      { completed: 0, pending: 0, water:0, hoa:0 }
     );
 
-    res.status(200).json(totalCollection);
+    res.status(200).json({totalCollection, totalWalletCollectionsThisMonth, noOfPendingTransaction: pendingTransactions?.length || 0});
   } catch (err) {
     console.error("Error fetching transactions:", err);
     res.status(500).json({ error: "Failed to fetch transactions" });
