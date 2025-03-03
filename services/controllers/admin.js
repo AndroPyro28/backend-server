@@ -1710,6 +1710,7 @@ router.get("/dashboard", async (req, res) => {
 
     const transactionsCollection = database.collection("transactions");
     const villageWalletCollection = database.collection("villwallet");
+    const billingStatementsCollection = database.collection("statements");
 
     // Get the first and last day of the current month
     const now = new Date();
@@ -1747,7 +1748,8 @@ router.get("/dashboard", async (req, res) => {
 
       const totalWalletCollectionsThisMonth = getTotalCollectionsForCurrentMonth(villWallet?.villwall_trn_hist || [])
       const transactionCollection = database.collection("transactions");
-
+      const billingStatements = await billingStatementsCollection.find({ bll_created_at: { $gte: firstDay, $lte: lastDay }, })
+      .toArray();
       const pendingTransactions = await transactionCollection
       .find({ trn_status: "pending" })
       .toArray();
@@ -1772,7 +1774,25 @@ router.get("/dashboard", async (req, res) => {
       { completed: 0, pending: 0, water:0, hoa:0 }
     );
 
-    res.status(200).json({totalCollection, totalWalletCollectionsThisMonth, noOfPendingTransaction: pendingTransactions?.length || 0});
+    console.log(billingStatements)
+    const billingStatementsData = convertDecimal128FieldsToString(JSON.parse(JSON.stringify(billingStatements)))
+
+    const totalStatments = billingStatementsData.reduce(((total, statement) => {
+      if(statement?.transactions_status === "pending") {
+        total.totalCollectibles += parseFloat(statement.bll_total_amt_due)
+      }
+
+      if(statement?.transactions_status === "completed") {
+        total.totalCollections += parseFloat(statement.bll_total_amt_due)
+      }
+      return total
+    }),{
+      totalCollectibles: 0,
+      totalCollections: 0,
+    }
+    )
+
+    res.status(200).json({totalCollection, totalWalletCollectionsThisMonth, noOfPendingTransaction: pendingTransactions?.length || 0, totalStatments});
   } catch (err) {
     console.error("Error fetching transactions:", err);
     res.status(500).json({ error: "Failed to fetch transactions" });
