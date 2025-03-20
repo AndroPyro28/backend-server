@@ -1792,6 +1792,8 @@ router.get("/dashboard", async (req, res) => {
     }
     )
 
+    totalStatments.totalCollections += totalWalletCollectionsThisMonth
+
     res.status(200).json({totalCollection, totalWalletCollectionsThisMonth, noOfPendingTransaction: pendingTransactions?.length || 0, totalStatments});
   } catch (err) {
     console.error("Error fetching transactions:", err);
