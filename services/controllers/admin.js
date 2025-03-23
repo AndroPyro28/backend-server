@@ -490,7 +490,7 @@ router.post('/transactions/:propId', async (req, res) => {
           trn_image_url="",
           bill_id
       } = req.body;
-
+      const dbClient = getDb();
       if (!trn_type || !trn_purp || !trn_method || !bill_id) {
           return res.status(400).json({ message: 'Missing required fields.' });
       }
@@ -506,7 +506,7 @@ router.post('/transactions/:propId', async (req, res) => {
       return res.status(404).json({ error: "Transaction not found." });
     }
 
-      const dbClient = getDb();
+      
       const bill = await dbClient.collection('statements').findOne({ bll_id: bill_id });
 
       if (!bill) {
