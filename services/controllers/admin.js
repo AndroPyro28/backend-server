@@ -556,7 +556,6 @@ router.post('/transactions/:propId', async (req, res) => {
       villwall_trn_link: user.usr_id,
       villwall_trn_description: `Made by ${user?.usr_first_name} ${user?.usr_last_name}`
     };
-
       
       await villWalletCollection.updateOne(
         { villwall_id: villageWallet.villwall_id },
