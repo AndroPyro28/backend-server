@@ -38,7 +38,7 @@ router.put("/update-status/:id", async (req, res) => {
     const user = await userCollection.findOne({ usr_id: transaction?.trn_user_init });
 
     if (!user || !user._id) {
-      console.error("User not found:", id);
+      console.error("User not found:", transaction?.trn_user_init);
       return res.status(404).json({ error: "Transaction not found." });
     }
 

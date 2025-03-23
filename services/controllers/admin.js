@@ -502,7 +502,7 @@ router.post('/transactions/:propId', async (req, res) => {
       const user = await dbClient.collection("statements").findOne({ usr_id: trn_user_init });
 
     if (!user || !user._id) {
-      console.error("User not found:", id);
+      console.error("User not found:", trn_user_init);
       return res.status(404).json({ error: "Transaction not found." });
     }
 
