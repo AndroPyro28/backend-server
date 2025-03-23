@@ -151,7 +151,23 @@ router.put("/update-status/:id", async (req, res) => {
       { villwall_id: villageWallet.villwall_id },
           { $inc: { villwall_tot_bal: parseFloat(transaction?.trn_amount) } }
         );
+
+        await villWalletCollection.updateOne(
+          { villwall_id: villageWallet.villwall_id },
+          {
+            $push: { 
+              transactions: { 
+                amount: parseFloat(transaction?.trn_amount), 
+                date: new Date(), 
+                status: "paid",
+                madeBy: transaction?.trn_user_init
+              }
+            }
+          }
+        );
     }
+
+    
     if(status === "rejected") {
       const source = fs.readFileSync(`${__dirname}/../../public/template/transaction-rejected.html`, 'utf-8').toString()
       const template = handlebars.compile(source)

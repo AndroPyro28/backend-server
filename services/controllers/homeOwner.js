@@ -780,6 +780,20 @@ router.post("/transactions/:propId", async (req, res) => {
         { $inc: { villwall_tot_bal: parseFloat(paymentAmount) } }
       );
 
+        await villWalletCollection.updateOne(
+          { villwall_id: villageWallet.villwall_id },
+          {
+            $push: { 
+              transactions: { 
+                amount: parseFloat(paymentAmount), 
+                date: new Date(), 
+                status: "paid",
+                madeBy: trn_user_init
+              }
+            }
+          }
+        );
+
       await dbClient.collection("statements").updateOne(
         { bll_id: bill_id },
         {

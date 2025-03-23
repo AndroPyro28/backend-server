@@ -599,6 +599,22 @@ router.post('/transactions/:propId', async (req, res) => {
           { upsert: true }
       );
 
+      if (newPayStat === "paid") {
+        await villWalletCollection.updateOne(
+          { villwall_id: villageWallet.villwall_id },
+          {
+            $push: { 
+              transactions: { 
+                amount: parseFloat(paymentAmount), 
+                date: new Date(), 
+                status: "paid",
+                madeBy: trn_user_init
+              }
+            }
+          }
+        );
+      }
+
     
       res.status(201).json({
           message: 'Transaction created and billing statement updated successfully.',
