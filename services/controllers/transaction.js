@@ -145,26 +145,35 @@ router.put("/update-status/:id", async (req, res) => {
       },
       { upsert: true }
     );
+
     const villWalletCollection = database.collection("villwallet");
     const villageWallet = await villWalletCollection.findOne();
+
+
+    let transactionID;
+    let transactionExists;
+    do {
+      transactionID = "CVVWT" + Math.random().toString(36).substring(2, 12);
+      transactionExists = villageWallet?.villwall_trn_hist?.some(
+        (trn) => trn.villwall_trn_id === transactionID
+      );
+    } while (transactionExists);
+
+        const user_transaction = {
+      villwall_trn_id: transactionID,
+      villwall_trn_type: "collect",
+      villwall_trn_created_at: new Date(),
+      villwall_trn_amt: parseFloat(transaction?.trn_amount), // Ensure amount is a float
+      villwall_trn_link: user.usr_id,
+      villwall_trn_description: `Made by ${user?.usr_first_name} ${user?.usr_last_name}`
+    };
     await villWalletCollection.updateOne(
       { villwall_id: villageWallet.villwall_id },
-          { $inc: { villwall_tot_bal: parseFloat(transaction?.trn_amount) } }
-        );
-
-        await villWalletCollection.updateOne(
-          { villwall_id: villageWallet.villwall_id },
-          {
-            $push: { 
-              transactions: { 
-                amount: parseFloat(transaction?.trn_amount), 
-                date: new Date(), 
-                status: "paid",
-                madeBy: transaction?.trn_user_init
-              }
-            }
-          }
-        );
+          { 
+            $inc: { villwall_tot_bal: parseFloat(transaction?.trn_amount) },
+            $push: { villwall_trn_hist: user_transaction },
+         }
+    );
     }
 
     

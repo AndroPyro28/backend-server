@@ -499,6 +499,13 @@ router.post('/transactions/:propId', async (req, res) => {
           return res.status(400).json({ message: 'Invalid transaction amount.' });
       }
 
+      const user = await dbClient.collection("statements").findOne({ usr_id: trn_user_init });
+
+    if (!user || !user._id) {
+      console.error("User not found:", id);
+      return res.status(404).json({ error: "Transaction not found." });
+    }
+
       const dbClient = getDb();
       const bill = await dbClient.collection('statements').findOne({ bll_id: bill_id });
 
@@ -530,12 +537,34 @@ router.post('/transactions/:propId', async (req, res) => {
       }
 
       const villWalletCollection = dbClient.collection("villwallet");
-
       const villageWallet = await villWalletCollection.findOne();
+
+      let transactionID;
+    let transactionExists;
+    do {
+      transactionID = "CVVWT" + Math.random().toString(36).substring(2, 12);
+      transactionExists = villageWallet?.villwall_trn_hist?.some(
+        (trn) => trn.villwall_trn_id === transactionID
+      );
+    } while (transactionExists);
+
+      const user_transaction = {
+      villwall_trn_id: transactionID,
+      villwall_trn_type: "collect",
+      villwall_trn_created_at: new Date(),
+      villwall_trn_amt: parseFloat(paymentAmount), // Ensure amount is a float
+      villwall_trn_link: user.usr_id,
+      villwall_trn_description: `Made by ${user?.usr_first_name} ${user?.usr_last_name}`
+    };
+
+      
       await villWalletCollection.updateOne(
         { villwall_id: villageWallet.villwall_id },
-            { $inc: { villwall_tot_bal: parseFloat(paymentAmount) } }
-          );
+            { 
+            $inc: { villwall_tot_bal: parseFloat(paymentAmount) },
+            $push: { villwall_trn_hist: user_transaction },
+           }
+      );
 
         if (trn_purp === "Water Bill") {
         newPaidBreakdown.water = (bill.bll_paid_breakdown?.water || 0) + paymentAmount;
@@ -599,21 +628,21 @@ router.post('/transactions/:propId', async (req, res) => {
           { upsert: true }
       );
 
-      if (newPayStat === "paid") {
-        await villWalletCollection.updateOne(
-          { villwall_id: villageWallet.villwall_id },
-          {
-            $push: { 
-              transactions: { 
-                amount: parseFloat(paymentAmount), 
-                date: new Date(), 
-                status: "paid",
-                madeBy: trn_user_init
-              }
-            }
-          }
-        );
-      }
+      // if (newPayStat === "paid") {
+      //   await villWalletCollection.updateOne(
+      //     { villwall_id: villageWallet.villwall_id },
+      //     {
+      //       $push: { 
+      //         transactions: { 
+      //           amount: parseFloat(paymentAmount), 
+      //           date: new Date(), 
+      //           status: "paid",
+      //           madeBy: trn_user_init
+      //         }
+      //       }
+      //     }
+      //   );
+      // }
 
     
       res.status(201).json({
