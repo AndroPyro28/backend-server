@@ -695,7 +695,7 @@ router.post("/transactions/:propId", async (req, res) => {
       return res.status(400).json({ message: "Invalid transaction amount." });
     }
 
-    const user = await dbClient.collection("statements").findOne({ usr_id: trn_user_init });
+    const user = await dbClient.collection("users").findOne({ usr_id: trn_user_init });
 
     if (!user || !user._id) {
       console.error("User not found:", trn_user_init);

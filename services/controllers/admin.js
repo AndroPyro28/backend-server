@@ -499,7 +499,7 @@ router.post('/transactions/:propId', async (req, res) => {
           return res.status(400).json({ message: 'Invalid transaction amount.' });
       }
 
-      const user = await dbClient.collection("statements").findOne({ usr_id: trn_user_init });
+      const user = await dbClient.collection("users").findOne({ usr_id: trn_user_init });
 
     if (!user || !user._id) {
       console.error("User not found:", trn_user_init);
@@ -1129,6 +1129,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
           const template = handlebars.compile(source)
           const replacement = {
             id: bll_id,
+            firstName: user?.usr_first_name,
             amount: Decimal128.fromString((totalBill || 0).toFixed(2)),
             date_coverage: sortableBillPeriod,
           }
