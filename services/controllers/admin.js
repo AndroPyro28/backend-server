@@ -1091,7 +1091,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
       december: "12",
     };
     const sortableBillPeriod = `${year}-${monthMapping[month.toLowerCase()]}`; // Format as YYYY-MM
-    const parsedBillPeriodDate = new Date(`${sortableBillPeriod}-01T00:00:00Z`); // Parse as a Date
+    const parsedBillPeriodDate = new Date(`${billCovPeriod}-01T00:00:00Z`); // Parse as a Date
 
     // Safely parse values and use defaults for undefined fields
     const newBillingStatement = {
