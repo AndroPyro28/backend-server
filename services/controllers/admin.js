@@ -959,7 +959,7 @@ router.get("/properties/:prop_id", async (req, res) => {
   try {
     const database = getDb();
     const propertiesCollection = database.collection("properties");
-
+    const billingStatementsCollection = database.collection("statements");
     const property = await propertiesCollection
       .aggregate([
         { $match: { prop_id: prop_id } },
@@ -1018,14 +1018,16 @@ router.get("/properties/:prop_id", async (req, res) => {
         },
       ])
       .toArray();
-
+      const bill = await billingStatementsCollection.find({ bll_prop_id: prop_id }).toArray()
+      
     if (!property || property.length === 0) {
       return res.status(404).json({ error: "Property not found" });
     }
-
+    
     const data = JSON.parse(JSON.stringify(property[0]));
     // Convert all Decimal128 fields to strings, including nested ones
     const propertyResponse = convertDecimal128FieldsToString(data);
+    propertyResponse.prev_water_read = bill[bill.length -1].bll_water_read
     res.status(200).json(propertyResponse);
   } catch (err) {
     console.error("Error fetching property:", err);
