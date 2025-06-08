@@ -1077,21 +1077,23 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
     }));
 
     // Convert `billCovPeriod` to a sortable format (e.g., 2024-01)
-    const [month, year] = billCovPeriod.split(" ");
+    const [year, month] = billCovPeriod.split("-");
+
     const monthMapping = {
-      january: "01",
-      february: "02",
-      march: "03",
-      april: "04",
-      may: "05",
-      june: "06",
-      july: "07",
-      august: "08",
-      september: "09",
-      october: "10",
-      november: "11",
-      december: "12",
+      "01": "january",
+      "01": "february",
+      "03": "march",
+      "04": "april",
+      "05": "may",
+      "06": "june",
+      "07": "july",
+      "08": "august",
+      "09": "september",
+      "10": "october",
+      "11": "november",
+      "12": "december",
     };
+    
     const sortableBillPeriod = `${year}-${monthMapping[month.toLowerCase()]}`; // Format as YYYY-MM
     const parsedBillPeriodDate = new Date(`${billCovPeriod}-01T00:00:00Z`); // Parse as a Date
 
@@ -1113,7 +1115,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
       bll_hoamaint_fee: Decimal128.fromString((hoaFee || "0.00").toString()),
       bll_prop_id: property.prop_id,
       bll_user_rec: property.prop_owner,
-      bll_bill_cov_period: sortableBillPeriod, // Store the sortable format
+      bll_bill_cov_period: billCovPeriod, // Store the sortable format
       bll_bill_cov_period_date: parsedBillPeriodDate, // Store as a Date for further sorting
       bll_created_at: timestamp,
       bll_updated_at: timestamp,
@@ -1126,6 +1128,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
 
     const prop = await database.collection("properties").findOne({prop_id: property.prop_id })
     const user = await database.collection("users").findOne({usr_id: prop.prop_owner_id })
+    const coverageDate = `${monthMapping[month]} ${year}`
 
     const source = fs.readFileSync(`${__dirname}/../../public/template/billing-statement.html`, 'utf-8').toString()
           const template = handlebars.compile(source)
@@ -1133,7 +1136,7 @@ router.post("/properties/:prop_id/new_billing_statement", async (req, res) => {
             id: bll_id,
             firstName: user?.usr_first_name,
             amount: Decimal128.fromString((totalBill || 0).toFixed(2)),
-            date_coverage: sortableBillPeriod,
+            date_coverage: coverageDate,
           }
           const reminderContent = template(replacement);
           sendMail({ content:reminderContent, subject: "Welcome", emailTo: user?.usr_email});
